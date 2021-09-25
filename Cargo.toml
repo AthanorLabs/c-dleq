@@ -1,0 +1,35 @@
+[package]
+name = "dleq"
+version = "0.0.0"
+description = "Implementation of a Discrete Log Equality proof supporting a variety of curves"
+license = "MIT"
+authors = ["Luke Parker <lukeparker5132@gmail.com>", "Lee Bousfield <ljbousfield@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+lazy_static = "1"
+hex-literal = "0.3"
+hex = "0.4"
+
+secp256kfun = { version = "0.6.2", features = ["default", "serde"] }
+curve25519-dalek = { version = "2", features = ["serde"] }
+ff = "0.8"
+group = "0.8"
+jubjub = "0.5"
+zcash_primitives = "0.5.0"
+
+digest = "0.9"
+sha2 = "0.9"
+blake2 = "0.9"
+
+serde = { version = "1", features = ["derive"] }
+
+log = "0.4.8"
+
+
+# TODO: Remove the below (rand -> rand_core)
+rand = { version = "0.7", features = ["std"] }
+anyhow = "1"
+
+[dev-dependencies]
+env_logger = "0.9"
