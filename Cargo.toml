@@ -22,10 +22,7 @@ digest = "0.9"
 sha2 = "0.9"
 blake2 = "0.9"
 
-serde = { version = "1", features = ["derive"] }
-
 log = "0.4.8"
-
 
 # TODO: Remove the below (rand -> rand_core)
 rand = { version = "0.7", features = ["std"] }

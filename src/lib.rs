@@ -5,8 +5,6 @@ use log::trace;
 use rand::{RngCore, rngs::OsRng};
 use sha2::{Sha256, digest::Digest};
 
-use serde::{Serialize, Deserialize};
-
 pub mod dl_eq_engines;
 use crate::dl_eq_engines::DlEqEngine;
 
@@ -15,7 +13,6 @@ use crate::dl_eq_engines::DlEqEngine;
 // TODO: Make this calculated at runtime based on the curves in question
 pub const SHARED_KEY_BITS: usize = 251;
 
-#[derive(Serialize, Deserialize)]
 pub struct DlEqProof<EngineA: DlEqEngine, EngineB: DlEqEngine> {
   base_commitments: Vec<(EngineA::PublicKey, EngineB::PublicKey)>,
   first_challenges: Vec<[u8; 32]>,

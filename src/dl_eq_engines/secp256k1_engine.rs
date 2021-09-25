@@ -9,8 +9,6 @@ use rand::{RngCore, rngs::OsRng};
 
 use secp256kfun::{marker::*, Scalar, Point, G, g, s};
 
-use serde::{Serialize, Deserialize};
-
 use crate::{
   SHARED_KEY_BITS,
   dl_eq_engines::{Commitment, DlEqEngine}
@@ -33,7 +31,7 @@ fn random_scalar() -> Scalar {
     .expect("Randomly generated 32 0-bytes")
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct SecpSignature {
   r: [u8; 32],
   s: Scalar::<Public, Zero>,
@@ -53,31 +51,13 @@ impl DlEqEngine for Secp256k1Engine {
     g!(key * G).mark::<Normal>()
   }
 
-  fn bytes_to_private_key(bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey> {
+  fn little_endian_bytes_to_private_key(mut bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey> {
+    bytes.reverse();
     Scalar::from_bytes_mod_order(bytes).mark::<NonZero>().ok_or_else(|| anyhow::anyhow!("Private key is 0"))
   }
 
-  fn bytes_to_public_key(bytes: &[u8]) -> anyhow::Result<Self::PublicKey> {
-    Point::from_bytes(bytes.try_into()?).ok_or_else(|| anyhow::anyhow!("Invalid point for public key"))
-  }
-
-  fn bytes_to_signature(bytes: &[u8]) -> anyhow::Result<Self::Signature> {
-    if bytes.len() != 64 {
-      anyhow::bail!("Expected secp256k1 signature to be 64 bytes long");
-    }
-    let mut r = [0; 32];
-    let mut s = [0; 32];
-    r.copy_from_slice(&bytes[..32]);
-    s.copy_from_slice(&bytes[32..]);
-    Ok(SecpSignature {
-      r,
-      s: Scalar::from_bytes(s).ok_or_else(|| anyhow::anyhow!("Invalid s scalar"))?.mark::<Public>(),
-    })
-  }
-
-  fn little_endian_bytes_to_private_key(mut bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey> {
-    bytes.reverse();
-    Self::bytes_to_private_key(bytes)
+  fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8> {
+    key.to_bytes().to_vec()
   }
 
   fn dl_eq_generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
@@ -154,26 +134,6 @@ impl DlEqEngine for Secp256k1Engine {
 
   fn dl_eq_blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
     Ok(g!(key * ALT_BASEPOINT).mark::<Normal>())
-  }
-
-  fn private_key_to_bytes(key: &Self::PrivateKey) -> [u8; 32] {
-    key.to_bytes()
-  }
-
-  fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8> {
-    key.to_bytes().to_vec()
-  }
-
-  fn signature_to_bytes(sig: &Self::Signature) -> Vec<u8> {
-    let mut result = sig.r.to_vec();
-    result.extend(&sig.s.to_bytes());
-    result
-  }
-
-  fn private_key_to_little_endian_bytes(key: &Self::PrivateKey) -> [u8; 32] {
-    let mut bytes = key.to_bytes();
-    bytes.reverse(); // secp is big endian
-    bytes
   }
 
   // TODO: Implement DN

@@ -15,8 +15,6 @@ use curve25519_dalek::{
   edwards::{EdwardsPoint, CompressedEdwardsY}
 };
 
-use serde::{Serialize, Deserialize};
-
 use crate::{
   SHARED_KEY_BITS,
   dl_eq_engines::{Commitment, DlEqEngine}
@@ -29,7 +27,7 @@ lazy_static! {
   };
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[allow(non_snake_case)]
 pub struct Signature {
   R: EdwardsPoint,
@@ -69,30 +67,12 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
     key * &ED25519_BASEPOINT_TABLE
   }
 
-  fn bytes_to_private_key(bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey> {
-    Ok(Scalar::from_bytes_mod_order(bytes))
-  }
-
-  fn bytes_to_public_key(bytes: &[u8]) -> anyhow::Result<Self::PublicKey> {
-    CompressedEdwardsY::from_slice(bytes).decompress().ok_or(anyhow::anyhow!("Invalid point for public key"))
-  }
-
-  fn bytes_to_signature(bytes: &[u8]) -> anyhow::Result<Self::Signature> {
-    if bytes.len() != 64 {
-      anyhow::bail!("Expected ed25519 signature to be 64 bytes long");
-    }
-    let mut scalar_bytes = [0; 32];
-    scalar_bytes.copy_from_slice(&bytes[32..]);
-    #[allow(non_snake_case)]
-    let R = CompressedEdwardsY::from_slice(&bytes[..32]).decompress().ok_or(anyhow::anyhow!("Invalid point in signature specified"))?;
-    Ok(Signature {
-      s: Scalar::from_bytes_mod_order(scalar_bytes),
-      R: R
-    })
-  }
-
   fn little_endian_bytes_to_private_key(bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey> {
-    Self::bytes_to_private_key(bytes)
+    Scalar::from_canonical_bytes(bytes).ok_or(anyhow::anyhow!("Invalid scalar"))
+  }
+
+  fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8> {
+    key.compress().to_bytes().to_vec()
   }
 
   fn dl_eq_generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
@@ -160,24 +140,6 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
 
   fn dl_eq_blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
     Ok(key * *ALT_BASEPOINT)
-  }
-
-  fn private_key_to_bytes(key: &Self::PrivateKey) -> [u8; 32] {
-    key.to_bytes()
-  }
-
-  fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8> {
-    key.compress().to_bytes().to_vec()
-  }
-
-  fn signature_to_bytes(sig: &Self::Signature) -> Vec<u8> {
-    let mut bytes = sig.R.compress().to_bytes().to_vec();
-    bytes.extend(&sig.s.to_bytes());
-    bytes
-  }
-
-  fn private_key_to_little_endian_bytes(key: &Self::PrivateKey) -> [u8; 32] {
-    key.to_bytes()
   }
 
   #[allow(non_snake_case)]
