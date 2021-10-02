@@ -2,8 +2,6 @@
 
 use std::convert::TryInto;
 
-use hex_literal::hex;
-
 use digest::Digest;
 use sha2::Sha256;
 use blake2::Blake2b;
@@ -12,7 +10,7 @@ use tiny_keccak::{Hasher, Keccak};
 use curve25519_dalek::{
   constants::{ED25519_BASEPOINT_POINT, RISTRETTO_BASEPOINT_POINT},
   edwards::CompressedEdwardsY,
-  ristretto::{CompressedRistretto, RistrettoPoint}
+  ristretto::{RistrettoPoint}
 };
 
 use group::{Group, GroupEncoding};
@@ -50,7 +48,7 @@ fn alt_ed25519() {
 fn alt_ristretto() {
   assert_eq!(
     RistrettoPoint::from_hash(Blake2b::new().chain(RISTRETTO_BASEPOINT_POINT.compress().as_bytes())),
-    CompressedRistretto(hex!("c6d77f893b5a01a5e995be5a568e55bb22f3931ee686f24e5d211bee967ec66d")).decompress().unwrap()
+    *ristretto::ALT_BASEPOINT
   );
 }
 
