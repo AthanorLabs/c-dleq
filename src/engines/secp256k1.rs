@@ -9,10 +9,7 @@ use rand::{RngCore, rngs::OsRng};
 
 use secp256kfun::{marker::*, Scalar, Point, G, g, s};
 
-use crate::{
-  SHARED_KEY_BITS,
-  engines::{Commitment, DLEqEngine}
-};
+use crate::engines::{DLEqEngine, Commitment};
 
 lazy_static! {
   // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97
@@ -44,6 +41,10 @@ impl DLEqEngine for Secp256k1Engine {
   type PublicKey = Point;
   type Signature = SecpSignature;
 
+  fn scalar_bits() -> usize {
+     255
+  }
+
   fn new_private_key() -> Self::PrivateKey {
     random_scalar()
   }
@@ -61,13 +62,13 @@ impl DLEqEngine for Secp256k1Engine {
     key.to_bytes().to_vec()
   }
 
-  fn generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments(key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
     let two = Scalar::from(2);
-    for i in 0..SHARED_KEY_BITS {
-      let blinding_key = if i == SHARED_KEY_BITS - 1 {
+    for i in 0 .. bits {
+      let blinding_key = if i == (bits - 1) {
         let inv_power_of_two = power_of_two.invert();
         s!(-blinding_key_total * inv_power_of_two).mark::<NonZero>()
           .expect("Blinding key total before final is zero")
@@ -76,6 +77,7 @@ impl DLEqEngine for Secp256k1Engine {
       };
       blinding_key_total = s!(blinding_key_total + blinding_key * power_of_two);
       power_of_two = s!(power_of_two * two).mark::<NonZero>().expect("Power of two is zero");
+
       let commitment_base = g!(blinding_key * ALT_BASEPOINT);
       let normalize_point = |point: Point<Jacobian, Public, Zero>| {
         point.mark::<Normal>().mark::<NonZero>().expect("Generated zero commitment")
@@ -86,12 +88,14 @@ impl DLEqEngine for Secp256k1Engine {
         let minus_one = normalize_point(g!(commitment_base - G));
         (commitment_base.mark::<Normal>(), minus_one)
       };
+
       commitments.push(Commitment {
         blinding_key,
         commitment_minus_one,
         commitment,
       });
     }
+
     debug_assert!(blinding_key_total.is_zero());
     let decoded_key = Self::little_endian_bytes_to_private_key(key)?;
     let pubkey = g!(decoded_key * G).mark::<Normal>();
@@ -100,6 +104,7 @@ impl DLEqEngine for Secp256k1Engine {
       &pubkey
     );
     debug!("Generated DL Eq proof for secp256k1 pubkey {}", hex::encode(pubkey.to_bytes()));
+
     Ok(commitments)
   }
 

@@ -15,10 +15,7 @@ use curve25519_dalek::{
 
 use log::debug;
 
-use crate::{
-  SHARED_KEY_BITS,
-  engines::{Commitment, DLEqEngine}
-};
+use crate::engines::{DLEqEngine, Commitment};
 
 lazy_static! {
   pub static ref ALT_BASEPOINT: RistrettoPoint = {
@@ -39,6 +36,10 @@ impl DLEqEngine for RistrettoEngine {
   type PublicKey = RistrettoPoint;
   type Signature = Signature;
 
+  fn scalar_bits() -> usize {
+     252
+  }
+
   fn new_private_key() -> Self::PrivateKey {
     Scalar::random(&mut OsRng)
   }
@@ -55,13 +56,13 @@ impl DLEqEngine for RistrettoEngine {
     key.compress().to_bytes().to_vec()
   }
 
-  fn generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments(key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
     let two = Scalar::from(2u8);
-    for i in 0..SHARED_KEY_BITS {
-      let blinding_key = if i == SHARED_KEY_BITS - 1 {
+    for i in 0 .. bits {
+      let blinding_key = if i == (bits - 1) {
         -blinding_key_total * power_of_two.invert()
       } else {
         Scalar::random(&mut OsRng)

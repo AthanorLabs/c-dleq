@@ -11,10 +11,7 @@ use blake2::Blake2b;
 use ff::PrimeField;
 use group::{GroupOps, GroupOpsOwned, ScalarMul, ScalarMulOwned, prime::PrimeGroup};
 
-use crate::{
-  SHARED_KEY_BITS,
-  engines::{Commitment, BasepointProvider, DLEqEngine}
-};
+use crate::engines::{Commitment, BasepointProvider, DLEqEngine};
 
 #[derive(Clone, PartialEq, Debug)]
 #[allow(non_snake_case)]
@@ -26,6 +23,7 @@ pub struct Signature<F, G> {
 pub trait FfGroupConversions {
   type Scalar;
   type Point;
+
   fn scalar_from_bytes_mod(bytes: [u8; 32]) -> Self::Scalar;
   fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> anyhow::Result<Self::Scalar>;
   fn point_to_bytes(point: &Self::Point) -> Vec<u8>;
@@ -55,6 +53,28 @@ impl<
   type PublicKey = G;
   type Signature = Signature<F, G>;
 
+  fn scalar_bits() -> usize {
+    // This commented algorithm works for Field
+    // PrimeField offers F::CAPACITY, which should be used, yet this may have value if we ever relax that requirement
+    // Considering we only use PrimeField for its encoding functions, and now this, that's not entirely out of the question
+    // It just depends on if curves largely support PrimeField or not, as they should
+    /*
+    // Technically, the modulus is +1
+    // This will lead to using one less bit of entropy than technically valid if the modulus is 100...
+    // with no other 1s in the entire modulus
+    let modulus = F::zero() - F::one();
+    let high_byte = C::scalar_to_little_endian_bytes(modulus)[31];
+    // Use one less bit than the modulus uses to ensure we're never over it
+    // The as usize isn't optimal, yet it's a u32 by default making this fine until you move to a 8 or 16 bit system
+    // Even then, leading zeroes will be <8, making this cast almost impossible to fail on any system
+    (256 - (high_byte.leading_zeros() as usize)) - 1
+    */
+
+    // This as usize isn't optimal, yet it's a u32 by default making this fine until you move to a 8 or 16 bit system
+    // Even then, it will be <256, making this cast almost impossible to fail on any system
+    F::CAPACITY as usize
+  }
+
   fn new_private_key() -> Self::PrivateKey {
     F::random(&mut OsRng)
   }
@@ -71,35 +91,39 @@ impl<
     C::point_to_bytes(key)
   }
 
-  fn generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments(key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = F::zero();
     let mut power_of_two = F::one();
-    for i in 0..SHARED_KEY_BITS {
-      let blinding_key = if i == SHARED_KEY_BITS - 1 {
+    for i in 0 .. bits {
+      let blinding_key = if i == (bits - 1) {
         -blinding_key_total * power_of_two.invert().unwrap()
       } else {
         F::random(&mut OsRng)
       };
       blinding_key_total += blinding_key * power_of_two;
       power_of_two = power_of_two.double();
+
       let commitment_base = B::alt_basepoint() * blinding_key;
       let (commitment, commitment_minus_one) = if (key[i/8] >> (i % 8)) & 1 == 1 {
         (commitment_base + B::basepoint(), commitment_base)
       } else {
         (commitment_base, commitment_base - B::basepoint())
       };
+
       commitments.push(Commitment {
         blinding_key: blinding_key,
         commitment_minus_one: commitment_minus_one,
         commitment: commitment
       });
     }
+
     debug_assert_eq!(blinding_key_total, F::zero());
     debug_assert_eq!(
       Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
       B::basepoint() * F::from_repr(key).ok_or(anyhow::anyhow!("Generating commitments for invalid scalar"))?
     );
+
     Ok(commitments)
   }
 

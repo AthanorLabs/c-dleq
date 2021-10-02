@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use anyhow::Context;
 
 use log::trace;
@@ -7,11 +9,6 @@ use sha2::{Sha256, digest::Digest};
 
 pub mod engines;
 use crate::engines::DLEqEngine;
-
-/// The number of bits shared keys can be specified with.
-/// Limited by Jubjub's scalar modulus, which is 2^251 and change.
-// TODO: Make this calculated at runtime based on the curves in question
-pub const SHARED_KEY_BITS: usize = 251;
 
 pub struct DLEqProof<EngineA: DLEqEngine, EngineB: DLEqEngine> {
   base_commitments: Vec<(EngineA::PublicKey, EngineB::PublicKey)>,
@@ -24,12 +21,18 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
   pub fn new() -> (Self, EngineA::PrivateKey, EngineB::PrivateKey) {
     let mut key = [0u8; 32];
     OsRng.fill_bytes(&mut key);
-    assert_eq!(SHARED_KEY_BITS, 251); // Change the following line if this changes
-    key[31] &= 0b0000_0111; // Chop off bits that might be greater than the curve modulus
-    let full_commitments_a = EngineA::generate_commitments(key).unwrap();
-    let full_commitments_b = EngineB::generate_commitments(key).unwrap();
-    assert_eq!(full_commitments_a.len(), SHARED_KEY_BITS);
-    assert_eq!(full_commitments_b.len(), SHARED_KEY_BITS);
+
+    // Chop off bits greater than the curve modulus
+    let bits = min(EngineA::scalar_bits(), EngineB::scalar_bits());
+    let to_clear = 256 - bits;
+    assert!(to_clear < 8); // Following algorithm has this bound
+                           // Likely not worth ever changing due to the security effects of doing so
+    key[31] &= (!0) >> to_clear;
+
+    let full_commitments_a = EngineA::generate_commitments(key, bits).unwrap();
+    let full_commitments_b = EngineB::generate_commitments(key, bits).unwrap();
+    assert_eq!(full_commitments_a.len(), bits);
+    assert_eq!(full_commitments_b.len(), bits);
     let mut base_commitments = Vec::new();
     let mut first_challenges = Vec::new();
     let mut s_values = Vec::new();
@@ -101,13 +104,15 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
   }
 
   pub fn verify(&self) -> anyhow::Result<(EngineA::PublicKey, EngineB::PublicKey)> {
-    if (self.base_commitments.len() != SHARED_KEY_BITS) ||
-      (self.first_challenges.len() != SHARED_KEY_BITS) ||
-      (self.s_values.len() != SHARED_KEY_BITS)
+    let bits = min(EngineA::scalar_bits(), EngineB::scalar_bits());
+    if (self.base_commitments.len() != bits) ||
+      (self.first_challenges.len() != bits) ||
+      (self.s_values.len() != bits)
     {
       anyhow::bail!("Discrete logarithm proof has wrong size");
     }
-    for i in 0..SHARED_KEY_BITS {
+
+    for i in 0 .. bits {
       let (ref base_commitment_a, ref base_commitment_b) = self.base_commitments[i];
       let first_challenge = self.first_challenges[i];
       let ref s_values = self.s_values[i];
@@ -131,6 +136,7 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         anyhow::bail!("Bad DL Eq proof! Regenerated challenge didn't match expected");
       }
     }
+
     let key_a = EngineA::reconstruct_key(self.base_commitments.iter().map(|c| &c.0))?;
     let key_a_hash: [u8; 32] = Sha256::digest(&EngineA::public_key_to_bytes(&key_a)).into();
     EngineA::verify_signature(&key_a, &key_a_hash, &self.signatures.0)
@@ -139,6 +145,7 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
     let key_b_hash: [u8; 32] = Sha256::digest(&EngineB::public_key_to_bytes(&key_b)).into();
     EngineB::verify_signature(&key_b, &key_b_hash, &self.signatures.1)
       .context("Error verifying signature for DL Eq public key B")?;
+
     trace!(
       "Verified DL Eq proof for keys {} and {}",
       hex::encode(EngineA::public_key_to_bytes(&key_a)),
