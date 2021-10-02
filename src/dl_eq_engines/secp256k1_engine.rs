@@ -16,7 +16,8 @@ use crate::{
 
 lazy_static! {
   // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97
-  static ref ALT_BASEPOINT: Point = {
+  // See comments on the ed25519 engine about pub status
+  pub static ref ALT_BASEPOINT: Point = {
     Point::from_bytes(hex!("0250929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"))
       .expect("Alternate basepoint is invalid")
   };
