@@ -2,7 +2,7 @@ use dleq::engines::{
   DLEqEngine,
   secp256k1::Secp256k1Engine,
   ed25519::{Ed25519Sha, Ed25519Blake},
-  sapling::SaplingEngine
+  jubjub::JubjubEngine
 };
 
 fn test_signature<E: DLEqEngine>() {
@@ -27,7 +27,9 @@ fn ed25519_signature() {
   test_signature::<Ed25519Blake>();
 }
 
+// Actually ff_group, not Jubjub, yet it can't hurt to preserve per-curve tests in this fashion
+// It does technically confirm the basepoint isn't 0, yet that's such an obscene case it's not really worth it
 #[test]
-fn sapling_signature() {
-  test_signature::<SaplingEngine>();
+fn jubjub_signature() {
+  test_signature::<JubjubEngine>();
 }

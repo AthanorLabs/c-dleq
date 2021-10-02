@@ -2,6 +2,7 @@ pub mod secp256k1;
 pub mod ed25519;
 
 pub mod ff_group;
+pub mod jubjub;
 pub mod sapling;
 
 #[allow(non_snake_case)]
@@ -12,7 +13,7 @@ pub struct KeyBundle {
   pub scripted_destination: Vec<u8>
 }
 
-pub struct Commitment<Engine: DlEqEngine> {
+pub struct Commitment<Engine: DLEqEngine> {
   pub blinding_key: Engine::PrivateKey,
   pub commitment: Engine::PublicKey,
   pub commitment_minus_one: Engine::PublicKey,
@@ -25,7 +26,7 @@ pub trait BasepointProvider {
   fn alt_basepoint() -> Self::Point;
 }
 
-pub trait DlEqEngine: Sized {
+pub trait DLEqEngine: Sized {
   type PrivateKey: PartialEq + Clone + Sized + Send + Sync + 'static;
   type PublicKey: PartialEq + Clone + Sized + Send + Sync + 'static;
   type Signature: PartialEq + Clone + Sized + Send + Sync + 'static;

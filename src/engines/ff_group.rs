@@ -1,17 +1,19 @@
 use std::{
   marker::PhantomData,
+  convert::TryInto,
   fmt::Debug
 };
 
 use rand::rngs::OsRng;
 use digest::Digest;
+use blake2::Blake2b;
 
 use ff::PrimeField;
 use group::{GroupOps, GroupOpsOwned, ScalarMul, ScalarMulOwned, prime::PrimeGroup};
 
 use crate::{
   SHARED_KEY_BITS,
-  engines::{Commitment, BasepointProvider, DlEqEngine}
+  engines::{Commitment, BasepointProvider, DLEqEngine}
 };
 
 #[derive(Clone, PartialEq, Debug)]
@@ -25,7 +27,6 @@ pub trait FfGroupConversions {
   type Scalar;
   type Point;
   fn scalar_from_bytes_mod(bytes: [u8; 32]) -> Self::Scalar;
-  fn scalar_from_bytes_wide(bytes: &[u8; 64]) -> Self::Scalar;
   fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> anyhow::Result<Self::Scalar>;
   fn point_to_bytes(point: &Self::Point) -> Vec<u8>;
 }
@@ -35,20 +36,21 @@ pub trait FfGroupConversions {
 pub struct FfGroupEngine<
   F: PrimeField<Repr = [u8; 32]>,
   G: PrimeGroup<Repr = [u8; 32]> + GroupOps + GroupOpsOwned + ScalarMul<F> + ScalarMulOwned<F>,
-  B: BasepointProvider<Point = G>,
-  C: FfGroupConversions<Scalar = F, Point = G>
+  C: FfGroupConversions<Scalar = F, Point = G>,
+  B: BasepointProvider<Point = G>
 > {
   _phantom_f: PhantomData<F>,
   _phantom_g: PhantomData<G>,
-  _phantom_b: PhantomData<B>,
-  _phantom_c: PhantomData<C>
+  _phantom_c: PhantomData<C>,
+  _phantom_b: PhantomData<B>
 }
+
 impl<
   F: PrimeField<Repr = [u8; 32]>,
   G: PrimeGroup<Repr = [u8; 32]> + GroupOps + GroupOpsOwned + ScalarMul<F> + ScalarMulOwned<F>,
-  B: BasepointProvider<Point = G>,
-  C: FfGroupConversions<Scalar = F, Point = G>
-> DlEqEngine for FfGroupEngine<F, G, B, C> {
+  C: FfGroupConversions<Scalar = F, Point = G>,
+  B: BasepointProvider<Point = G>
+> DLEqEngine for FfGroupEngine<F, G, C, B> {
   type PrivateKey = F;
   type PublicKey = G;
   type Signature = Signature<F, G>;
@@ -128,39 +130,24 @@ impl<
     Ok(B::alt_basepoint() * key)
   }
 
-  // This implements EdDSA. Schnorr would be more generic/efficient
-  // The reason this implements EdDSA is because *any* algorithm would work here, and we already had EdDSA code
-  #[allow(non_snake_case)]
   fn sign(key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature> {
-    let r = F::random(&mut OsRng);
-    let R = B::basepoint() * r;
-    let A = B::basepoint() * key;
-    let mut hram = [0u8; 64];
-    let hash = sha2::Sha512::new()
-      .chain(&R.to_bytes())
-      .chain(&A.to_bytes())
-      .chain(message)
-      .finalize();
-    hram.copy_from_slice(&hash);
-    let c = C::scalar_from_bytes_wide(&hram);
-    let s = r + c * key;
-    Ok(Signature {
-      R: R,
-      s: s
-    })
+    let k = F::random(&mut OsRng);
+    #[allow(non_snake_case)]
+    let R = B::basepoint() * k;
+
+    let mut to_hash = C::point_to_bytes(&R);
+    to_hash.extend(message);
+    let s = k - (*key * C::scalar_from_bytes_mod(Blake2b::digest(&to_hash)[..32].try_into().unwrap()));
+
+    Ok(Signature { R, s })
   }
 
   #[allow(non_snake_case)]
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()> {
-    let mut hram = [0u8; 64];
-    let hash = sha2::Sha512::new()
-      .chain(&Self::public_key_to_bytes(&signature.R))
-      .chain(&Self::public_key_to_bytes(public_key))
-      .chain(message)
-      .finalize();
-    hram.copy_from_slice(&hash);
-    let c = C::scalar_from_bytes_wide(&hram);
-    let expected_R = (B::basepoint() * signature.s) - (*public_key * c);
+    let mut to_hash = C::point_to_bytes(&signature.R);
+    to_hash.extend(message);
+    let c = C::scalar_from_bytes_mod(Blake2b::digest(&to_hash)[..32].try_into().unwrap());
+    let expected_R = (B::basepoint() * signature.s) + (*public_key * c);
     if expected_R == signature.R {
       Ok(())
     } else {

@@ -15,7 +15,10 @@ use curve25519_dalek::{
   ristretto::{CompressedRistretto, RistrettoPoint}
 };
 
-use dleq::engines::{secp256k1, ed25519};
+use group::{Group, GroupEncoding};
+use ::jubjub::SubgroupPoint;
+
+use dleq::engines::{BasepointProvider, secp256k1, ed25519, ristretto, jubjub};
 
 // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97
 #[test]
@@ -51,5 +54,12 @@ fn alt_ristretto() {
   );
 }
 
-// Jubjub is not tested.
-// The basepoint in question is from ZCash's library which is expected to have its own set of tests for accuracy.
+#[test]
+fn alt_jubjub() {
+  assert_eq!(
+    SubgroupPoint::from_bytes(
+      Blake2b::digest(&SubgroupPoint::generator().to_bytes())[..32].try_into().unwrap()
+    ).unwrap(),
+    jubjub::JubjubBasepoints::alt_basepoint()
+  )
+}
