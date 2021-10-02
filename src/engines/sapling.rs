@@ -10,7 +10,7 @@ use group::{Group, GroupEncoding};
 use jubjub::{Fr, SubgroupPoint};
 use zcash_primitives::constants::SPENDING_KEY_GENERATOR;
 
-use crate::dl_eq_engines::{BasepointProvider, ff_group_engine::{FfGroupConversions, FfGroupEngine}};
+use crate::engines::{BasepointProvider, ff_group::{FfGroupConversions, FfGroupEngine}};
 
 pub struct SaplingBasepoints;
 impl BasepointProvider for SaplingBasepoints {

@@ -1,8 +1,8 @@
-pub mod secp256k1_engine;
-pub mod ed25519_engine;
+pub mod secp256k1;
+pub mod ed25519;
 
-pub mod ff_group_engine;
-pub mod sapling_engine;
+pub mod ff_group;
+pub mod sapling;
 
 #[allow(non_snake_case)]
 pub struct KeyBundle {
@@ -18,6 +18,7 @@ pub struct Commitment<Engine: DlEqEngine> {
   pub commitment_minus_one: Engine::PublicKey,
 }
 
+// TODO: Have all engines support this.
 pub trait BasepointProvider {
   type Point;
   fn basepoint() -> Self::Point;
@@ -35,13 +36,13 @@ pub trait DlEqEngine: Sized {
   fn little_endian_bytes_to_private_key(bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey>;
   fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8>;
 
-  fn dl_eq_generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>>;
-  fn dl_eq_compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey>;
+  fn generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>>;
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey>;
   #[allow(non_snake_case)]
-  fn dl_eq_compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey>;
-  fn dl_eq_commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey>;
-  fn dl_eq_reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey>;
-  fn dl_eq_blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey>;
+  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey>;
+  fn commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey>;
+  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey>;
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey>;
 
   fn sign(secret_key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature>;
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()>;

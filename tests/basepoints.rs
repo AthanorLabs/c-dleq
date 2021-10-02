@@ -15,7 +15,7 @@ use curve25519_dalek::{
   ristretto::{CompressedRistretto, RistrettoPoint}
 };
 
-use dleq::dl_eq_engines::{secp256k1_engine, ed25519_engine};
+use dleq::engines::{secp256k1, ed25519};
 
 // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97
 #[test]
@@ -24,7 +24,7 @@ fn alt_secp256k1() {
   alt.extend(&Sha256::new().chain(secp256kfun::G.to_bytes_uncompressed()).finalize());
   assert_eq!(
     secp256kfun::Point::from_bytes(alt.try_into().unwrap()).unwrap(),
-    *secp256k1_engine::ALT_BASEPOINT
+    *secp256k1::ALT_BASEPOINT
   );
 }
 
@@ -38,7 +38,7 @@ fn alt_ed25519() {
   keccak.finalize(&mut hash_G);
   assert_eq!(
     CompressedEdwardsY::from_slice(&hash_G).decompress().unwrap().mul_by_cofactor(),
-    *ed25519_engine::ALT_BASEPOINT
+    *ed25519::ALT_BASEPOINT
   );
 }
 

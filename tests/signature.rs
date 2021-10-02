@@ -1,9 +1,33 @@
-use dleq::dl_eq_engines::{DlEqEngine, sapling_engine::SaplingEngine};
+use dleq::engines::{
+  DlEqEngine,
+  secp256k1::Secp256k1Engine,
+  ed25519::{Ed25519Sha, Ed25519Blake},
+  sapling::SaplingEngine
+};
+
+fn test_signature<E: DlEqEngine>() {
+  let key = E::new_private_key();
+  let sig = E::sign(&key, &[1; 32]).expect("Couldn't call sign");
+  let diff_sig = E::sign(&key, &[2; 32]).expect("Couldn't call sign");
+  E::verify_signature(&E::to_public_key(&key), &[1; 32], &sig).expect("Signature verification failed");
+  // Test a different signature
+  assert!(E::verify_signature(&E::to_public_key(&key), &[1; 32], &diff_sig).is_err());
+  // Test a different message. Decently extraneous thanks to the above
+  assert!(E::verify_signature(&E::to_public_key(&key), &[2; 32], &sig).is_err());
+}
 
 #[test]
-fn test_signature() {
-  let _ = env_logger::builder().is_test(true).try_init();
-  let key = SaplingEngine::new_private_key();
-  let sig = SaplingEngine::sign(&key, &vec![1]).expect("Couldn't call sign");
-  SaplingEngine::verify_signature(&SaplingEngine::to_public_key(&key), &vec![1], &sig).expect("Signature verification failed");
+fn secp256k1_signature() {
+  test_signature::<Secp256k1Engine>();
+}
+
+#[test]
+fn ed25519_signature() {
+  test_signature::<Ed25519Sha>();
+  test_signature::<Ed25519Blake>();
+}
+
+#[test]
+fn sapling_signature() {
+  test_signature::<SaplingEngine>();
 }

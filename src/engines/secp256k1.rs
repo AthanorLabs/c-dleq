@@ -11,7 +11,7 @@ use secp256kfun::{marker::*, Scalar, Point, G, g, s};
 
 use crate::{
   SHARED_KEY_BITS,
-  dl_eq_engines::{Commitment, DlEqEngine}
+  engines::{Commitment, DlEqEngine}
 };
 
 lazy_static! {
@@ -61,7 +61,7 @@ impl DlEqEngine for Secp256k1Engine {
     key.to_bytes().to_vec()
   }
 
-  fn dl_eq_generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
@@ -96,19 +96,19 @@ impl DlEqEngine for Secp256k1Engine {
     let decoded_key = Self::little_endian_bytes_to_private_key(key)?;
     let pubkey = g!(decoded_key * G).mark::<Normal>();
     debug_assert_eq!(
-      &Self::dl_eq_reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
+      &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
       &pubkey
     );
     debug!("Generated dleq proof for secp256k1 pubkey {}", hex::encode(pubkey.to_bytes()));
     Ok(commitments)
   }
 
-  fn dl_eq_compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
     let challenge = Scalar::from_bytes_mod_order(challenge);
     Ok(s!(nonce + challenge * key).mark::<NonZero>().ok_or_else(|| anyhow::anyhow!("Generated zero s value"))?)
   }
 
-  fn dl_eq_compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
     let challenge = Scalar::from_bytes_mod_order(challenge);
     Ok(
       g!(s_value * ALT_BASEPOINT - challenge * key)
@@ -118,11 +118,11 @@ impl DlEqEngine for Secp256k1Engine {
     )
   }
 
-  fn dl_eq_commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
     Ok(g!(commitment - G).mark::<Normal>().mark::<NonZero>().ok_or_else(|| anyhow::anyhow!("Generated zero commitment"))?)
   }
 
-  fn dl_eq_reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
+  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
     let mut power_of_two = Scalar::one();
     let mut res = Point::zero().mark::<Jacobian>();
     let two = Scalar::from(2);
@@ -133,7 +133,7 @@ impl DlEqEngine for Secp256k1Engine {
     res.mark::<Normal>().mark::<NonZero>().ok_or_else(|| anyhow::anyhow!("Reconstructed zero key"))
   }
 
-  fn dl_eq_blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
     Ok(g!(key * ALT_BASEPOINT).mark::<Normal>())
   }
 

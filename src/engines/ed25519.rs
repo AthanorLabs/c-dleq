@@ -17,7 +17,7 @@ use curve25519_dalek::{
 
 use crate::{
   SHARED_KEY_BITS,
-  dl_eq_engines::{Commitment, DlEqEngine}
+  engines::{Commitment, DlEqEngine}
 };
 
 lazy_static! {
@@ -77,7 +77,7 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
     key.compress().to_bytes().to_vec()
   }
 
-  fn dl_eq_generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
@@ -107,26 +107,26 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
       anyhow::anyhow!("Generating commitments for too large scalar")
     )? * &ED25519_BASEPOINT_TABLE;
     debug_assert_eq!(
-      &Self::dl_eq_reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
+      &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
       &pubkey
     );
     debug!("Generated dleq proof for ed25519 pubkey {}", hex::encode(pubkey.compress().as_bytes()));
     Ok(commitments)
   }
 
-  fn dl_eq_compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
     Ok(nonce + Scalar::from_bytes_mod_order(challenge) * key)
   }
 
-  fn dl_eq_compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
     Ok(s_value * *ALT_BASEPOINT - Scalar::from_bytes_mod_order(challenge) * key)
   }
 
-  fn dl_eq_commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
     Ok(commitment - ED25519_BASEPOINT_POINT)
   }
 
-  fn dl_eq_reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
+  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
     let mut power_of_two = Scalar::one();
     let mut res = EdwardsPoint::identity();
     let two = Scalar::from(2u8);
@@ -140,7 +140,7 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
     Ok(res)
   }
 
-  fn dl_eq_blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
     Ok(key * *ALT_BASEPOINT)
   }
 

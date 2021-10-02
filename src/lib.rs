@@ -5,8 +5,8 @@ use log::trace;
 use rand::{RngCore, rngs::OsRng};
 use sha2::{Sha256, digest::Digest};
 
-pub mod dl_eq_engines;
-use crate::dl_eq_engines::DlEqEngine;
+pub mod engines;
+use crate::engines::DlEqEngine;
 
 /// The number of bits shared keys can be specified with.
 /// Limited by Jubjub's scalar modulus, which is 2^251 and change.
@@ -26,8 +26,8 @@ impl<EngineA: DlEqEngine, EngineB: DlEqEngine> DlEqProof<EngineA, EngineB> {
     OsRng.fill_bytes(&mut key);
     assert_eq!(SHARED_KEY_BITS, 251); // Change the following line if this changes
     key[31] &= 0b0000_0111; // Chop off bits that might be greater than the curve modulus
-    let full_commitments_a = EngineA::dl_eq_generate_commitments(key).unwrap();
-    let full_commitments_b = EngineB::dl_eq_generate_commitments(key).unwrap();
+    let full_commitments_a = EngineA::generate_commitments(key).unwrap();
+    let full_commitments_b = EngineB::generate_commitments(key).unwrap();
     assert_eq!(full_commitments_a.len(), SHARED_KEY_BITS);
     assert_eq!(full_commitments_b.len(), SHARED_KEY_BITS);
     let mut base_commitments = Vec::new();
@@ -40,11 +40,11 @@ impl<EngineA: DlEqEngine, EngineB: DlEqEngine> DlEqProof<EngineA, EngineB> {
         std::mem::swap(&mut real_comm, &mut fake_comm);
       }
       debug_assert_eq!(
-        hex::encode(EngineA::public_key_to_bytes(&EngineA::dl_eq_blinding_key_to_public(&comm_a.blinding_key).unwrap())),
+        hex::encode(EngineA::public_key_to_bytes(&EngineA::blinding_key_to_public(&comm_a.blinding_key).unwrap())),
         hex::encode(EngineA::public_key_to_bytes(real_comm.0))
       );
       debug_assert_eq!(
-        hex::encode(EngineB::public_key_to_bytes(&EngineB::dl_eq_blinding_key_to_public(&comm_b.blinding_key).unwrap())),
+        hex::encode(EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&comm_b.blinding_key).unwrap())),
         hex::encode(EngineB::public_key_to_bytes(real_comm.1))
       );
       let future_nonce_a = EngineA::new_private_key();
@@ -52,8 +52,8 @@ impl<EngineA: DlEqEngine, EngineB: DlEqEngine> DlEqProof<EngineA, EngineB> {
       let cheating_challenge: [u8; 32] = Sha256::new()
         .chain(EngineA::public_key_to_bytes(&comm_a.commitment))
         .chain(EngineB::public_key_to_bytes(&comm_b.commitment))
-        .chain(EngineA::public_key_to_bytes(&EngineA::dl_eq_blinding_key_to_public(&future_nonce_a).unwrap()))
-        .chain(EngineB::public_key_to_bytes(&EngineB::dl_eq_blinding_key_to_public(&future_nonce_b).unwrap()))
+        .chain(EngineA::public_key_to_bytes(&EngineA::blinding_key_to_public(&future_nonce_a).unwrap()))
+        .chain(EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&future_nonce_b).unwrap()))
         .finalize()
         .into();
       let cheating_s_a = EngineA::new_private_key();
@@ -61,12 +61,12 @@ impl<EngineA: DlEqEngine, EngineB: DlEqEngine> DlEqProof<EngineA, EngineB> {
       let real_challenge: [u8; 32] = Sha256::new()
         .chain(EngineA::public_key_to_bytes(&comm_a.commitment))
         .chain(EngineB::public_key_to_bytes(&comm_b.commitment))
-        .chain(EngineA::public_key_to_bytes(&EngineA::dl_eq_compute_signature_R(&cheating_s_a, cheating_challenge, fake_comm.0).unwrap()))
-        .chain(EngineB::public_key_to_bytes(&EngineB::dl_eq_compute_signature_R(&cheating_s_b, cheating_challenge, fake_comm.1).unwrap()))
+        .chain(EngineA::public_key_to_bytes(&EngineA::compute_signature_R(&cheating_s_a, cheating_challenge, fake_comm.0).unwrap()))
+        .chain(EngineB::public_key_to_bytes(&EngineB::compute_signature_R(&cheating_s_b, cheating_challenge, fake_comm.1).unwrap()))
         .finalize()
         .into();
-      let real_s_a = EngineA::dl_eq_compute_signature_s(&future_nonce_a, real_challenge, &comm_a.blinding_key).unwrap();
-      let real_s_b = EngineB::dl_eq_compute_signature_s(&future_nonce_b, real_challenge, &comm_b.blinding_key).unwrap();
+      let real_s_a = EngineA::compute_signature_s(&future_nonce_a, real_challenge, &comm_a.blinding_key).unwrap();
+      let real_s_b = EngineB::compute_signature_s(&future_nonce_b, real_challenge, &comm_b.blinding_key).unwrap();
       if bit_set {
         first_challenges.push(cheating_challenge);
         s_values.push([
@@ -114,28 +114,28 @@ impl<EngineA: DlEqEngine, EngineB: DlEqEngine> DlEqProof<EngineA, EngineB> {
       let second_challenge: [u8; 32] = Sha256::new()
         .chain(EngineA::public_key_to_bytes(base_commitment_a))
         .chain(EngineB::public_key_to_bytes(base_commitment_b))
-        .chain(EngineA::public_key_to_bytes(&EngineA::dl_eq_compute_signature_R(&s_values[1].0, first_challenge, base_commitment_a)?))
-        .chain(EngineB::public_key_to_bytes(&EngineB::dl_eq_compute_signature_R(&s_values[1].1, first_challenge, base_commitment_b)?))
+        .chain(EngineA::public_key_to_bytes(&EngineA::compute_signature_R(&s_values[1].0, first_challenge, base_commitment_a)?))
+        .chain(EngineB::public_key_to_bytes(&EngineB::compute_signature_R(&s_values[1].1, first_challenge, base_commitment_b)?))
         .finalize()
         .into();
-      let other_commitment_a = EngineA::dl_eq_commitment_sub_one(base_commitment_a)?;
-      let other_commitment_b = EngineB::dl_eq_commitment_sub_one(base_commitment_b)?;
+      let other_commitment_a = EngineA::commitment_sub_one(base_commitment_a)?;
+      let other_commitment_b = EngineB::commitment_sub_one(base_commitment_b)?;
       let check_first_challenge: [u8; 32] = Sha256::new()
         .chain(EngineA::public_key_to_bytes(base_commitment_a))
         .chain(EngineB::public_key_to_bytes(base_commitment_b))
-        .chain(EngineA::public_key_to_bytes(&EngineA::dl_eq_compute_signature_R(&s_values[0].0, second_challenge, &other_commitment_a)?))
-        .chain(EngineB::public_key_to_bytes(&EngineB::dl_eq_compute_signature_R(&s_values[0].1, second_challenge, &other_commitment_b)?))
+        .chain(EngineA::public_key_to_bytes(&EngineA::compute_signature_R(&s_values[0].0, second_challenge, &other_commitment_a)?))
+        .chain(EngineB::public_key_to_bytes(&EngineB::compute_signature_R(&s_values[0].1, second_challenge, &other_commitment_b)?))
         .finalize()
         .into();
       if first_challenge != check_first_challenge {
         anyhow::bail!("Bad dleq proof! Regenerated challenge didn't match expected");
       }
     }
-    let key_a = EngineA::dl_eq_reconstruct_key(self.base_commitments.iter().map(|c| &c.0))?;
+    let key_a = EngineA::reconstruct_key(self.base_commitments.iter().map(|c| &c.0))?;
     let key_a_hash: [u8; 32] = Sha256::digest(&EngineA::public_key_to_bytes(&key_a)).into();
     EngineA::verify_signature(&key_a, &key_a_hash, &self.signatures.0)
       .context("Error verifying signature for dleq public key A")?;
-    let key_b = EngineB::dl_eq_reconstruct_key(self.base_commitments.iter().map(|c| &c.1))?;
+    let key_b = EngineB::reconstruct_key(self.base_commitments.iter().map(|c| &c.1))?;
     let key_b_hash: [u8; 32] = Sha256::digest(&EngineB::public_key_to_bytes(&key_b)).into();
     EngineB::verify_signature(&key_b, &key_b_hash, &self.signatures.1)
       .context("Error verifying signature for dleq public key B")?;

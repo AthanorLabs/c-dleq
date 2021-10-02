@@ -1,14 +1,14 @@
 use dleq::{
-  dl_eq_engines::DlEqEngine,
-  dl_eq_engines::{
-    ed25519_engine::Ed25519Sha,
-    secp256k1_engine::Secp256k1Engine,
-    sapling_engine::SaplingEngine
+  engines::DlEqEngine,
+  engines::{
+    ed25519::Ed25519Sha,
+    secp256k1::Secp256k1Engine,
+    sapling::SaplingEngine
   },
   DlEqProof
 };
 
-fn test_dl_eq_with_engines<EngineA: DlEqEngine, EngineB: DlEqEngine>() {
+fn test_with<EngineA: DlEqEngine, EngineB: DlEqEngine>() {
   let _ = env_logger::builder().is_test(true).try_init();
   let (proof, skey_a, skey_b) = DlEqProof::<EngineA, EngineB>::new();
   let (pkey_a, pkey_b) = proof.verify().expect("DlEq proof verification failed");
@@ -17,42 +17,42 @@ fn test_dl_eq_with_engines<EngineA: DlEqEngine, EngineB: DlEqEngine>() {
 }
 
 #[test]
-fn dl_eq_ed25519_with_self() {
+fn ed25519_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_dl_eq_with_engines::<Ed25519Sha, Ed25519Sha>();
+  test_with::<Ed25519Sha, Ed25519Sha>();
 }
 
 #[test]
-fn dl_eq_secp256k1_with_self() {
+fn secp256k1_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_dl_eq_with_engines::<Secp256k1Engine, Secp256k1Engine>();
+  test_with::<Secp256k1Engine, Secp256k1Engine>();
 }
 
 #[test]
-fn dl_eq_jubjub_with_self() {
+fn sapling_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_dl_eq_with_engines::<SaplingEngine, SaplingEngine>();
+  test_with::<SaplingEngine, SaplingEngine>();
 }
 
 #[test]
-fn dl_eq_secp256k1_with_ed25519() {
+fn secp256k1_with_ed25519() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_dl_eq_with_engines::<Secp256k1Engine, Ed25519Sha>();
-  test_dl_eq_with_engines::<Ed25519Sha, Secp256k1Engine>();
+  test_with::<Secp256k1Engine, Ed25519Sha>();
+  test_with::<Ed25519Sha, Secp256k1Engine>();
 }
 
 #[test]
-fn dl_eq_secp256k1_with_jubjub() {
+fn secp256k1_with_sapling() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_dl_eq_with_engines::<Secp256k1Engine, SaplingEngine>();
-  test_dl_eq_with_engines::<SaplingEngine, Secp256k1Engine>();
+  test_with::<Secp256k1Engine, SaplingEngine>();
+  test_with::<SaplingEngine, Secp256k1Engine>();
 }
 
 #[test]
-fn dl_eq_ed25519_with_jubjub() {
+fn ed25519_with_sapling() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_dl_eq_with_engines::<Ed25519Sha, SaplingEngine>();
-  test_dl_eq_with_engines::<SaplingEngine, Ed25519Sha>();
+  test_with::<Ed25519Sha, SaplingEngine>();
+  test_with::<SaplingEngine, Ed25519Sha>();
 }
 
 // TODO

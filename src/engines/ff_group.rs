@@ -11,7 +11,7 @@ use group::{GroupOps, GroupOpsOwned, ScalarMul, ScalarMulOwned, prime::PrimeGrou
 
 use crate::{
   SHARED_KEY_BITS,
-  dl_eq_engines::{Commitment, BasepointProvider, DlEqEngine}
+  engines::{Commitment, BasepointProvider, DlEqEngine}
 };
 
 #[derive(Clone, PartialEq, Debug)]
@@ -69,7 +69,7 @@ impl<
     C::point_to_bytes(key)
   }
 
-  fn dl_eq_generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments(key: [u8; 32]) -> anyhow::Result<Vec<Commitment<Self>>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = F::zero();
     let mut power_of_two = F::one();
@@ -95,26 +95,26 @@ impl<
     }
     debug_assert_eq!(blinding_key_total, F::zero());
     debug_assert_eq!(
-      Self::dl_eq_reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
+      Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
       B::basepoint() * F::from_repr(key).ok_or(anyhow::anyhow!("Generating commitments for invalid scalar"))?
     );
     Ok(commitments)
   }
 
-  fn dl_eq_compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
     Ok((C::scalar_from_bytes_mod(challenge) * key) + nonce)
   }
 
   #[allow(non_snake_case)]
-  fn dl_eq_compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
     Ok((B::alt_basepoint() * s_value) - (*key * C::scalar_from_bytes_mod(challenge)))
   }
 
-  fn dl_eq_commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
     Ok(*commitment - B::basepoint())
   }
 
-  fn dl_eq_reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
+  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
     let mut power_of_two = F::one();
     let mut res = G::identity();
     for comm in commitments {
@@ -124,7 +124,7 @@ impl<
     Ok(res)
   }
 
-  fn dl_eq_blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
     Ok(B::alt_basepoint() * key)
   }
 
