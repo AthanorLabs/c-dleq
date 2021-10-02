@@ -1,11 +1,11 @@
 use dleq::engines::{
-  DlEqEngine,
+  DLEqEngine,
   secp256k1::Secp256k1Engine,
   ed25519::{Ed25519Sha, Ed25519Blake},
   sapling::SaplingEngine
 };
 
-fn test_signature<E: DlEqEngine>() {
+fn test_signature<E: DLEqEngine>() {
   let key = E::new_private_key();
   let sig = E::sign(&key, &[1; 32]).expect("Couldn't call sign");
   let diff_sig = E::sign(&key, &[2; 32]).expect("Couldn't call sign");

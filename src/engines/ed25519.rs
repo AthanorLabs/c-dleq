@@ -3,8 +3,6 @@ use std::marker::PhantomData;
 use lazy_static::lazy_static;
 use hex_literal::hex;
 
-use log::debug;
-
 use rand::rngs::OsRng;
 use digest::{Digest, generic_array::typenum::U64};
 
@@ -15,14 +13,16 @@ use curve25519_dalek::{
   edwards::{EdwardsPoint, CompressedEdwardsY}
 };
 
+use log::debug;
+
 use crate::{
   SHARED_KEY_BITS,
-  engines::{Commitment, DlEqEngine}
+  engines::{Commitment, DLEqEngine}
 };
 
 lazy_static! {
   // Taken from Monero: https://github.com/monero-project/monero/blob/9414194b1e47730843e4dbbd4214bf72d3540cf9/src/ringct/rctTypes.h#L454
-  // TODO: Should this be available via the DL EQ Engine trait?
+  // TODO: Should this be available via DLEqEngine?
   // It's only pub as-is for the tests.
   pub static ref ALT_BASEPOINT: EdwardsPoint = {
     CompressedEdwardsY(hex!("8b655970153799af2aeadc9ff1add0ea6c7251d54154cfa92c173a0dd39c1f94")).decompress().unwrap()
@@ -56,7 +56,7 @@ pub struct Ed25519Engine<D: Digest<OutputSize = U64>> {
 pub type Ed25519Sha = Ed25519Engine<sha2::Sha512>;
 pub type Ed25519Blake = Ed25519Engine<blake2::Blake2b>;
 
-impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
+impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
   type PrivateKey = Scalar;
   type PublicKey = EdwardsPoint;
   type Signature = Signature;
@@ -82,7 +82,7 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
     let two = Scalar::from(2u8);
-    for i in 0..SHARED_KEY_BITS {
+    for i in 0 .. SHARED_KEY_BITS {
       let blinding_key = if i == SHARED_KEY_BITS - 1 {
         -blinding_key_total * power_of_two.invert()
       } else {
@@ -90,18 +90,21 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
       };
       blinding_key_total += blinding_key * power_of_two;
       power_of_two *= two;
+
       let commitment_base = blinding_key * *ALT_BASEPOINT;
       let (commitment, commitment_minus_one) = if (key[i/8] >> (i % 8)) & 1 == 1 {
         (&commitment_base + &ED25519_BASEPOINT_POINT, commitment_base)
       } else {
         (commitment_base, &commitment_base - &ED25519_BASEPOINT_POINT)
       };
+
       commitments.push(Commitment {
         blinding_key,
         commitment_minus_one,
         commitment,
       });
     }
+
     debug_assert_eq!(blinding_key_total, Scalar::zero());
     let pubkey = &Scalar::from_canonical_bytes(key).ok_or(
       anyhow::anyhow!("Generating commitments for too large scalar")
@@ -110,7 +113,8 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
       &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
       &pubkey
     );
-    debug!("Generated dleq proof for ed25519 pubkey {}", hex::encode(pubkey.compress().as_bytes()));
+    debug!("Generated DL Eq proof for Ed25519 pubkey {}", hex::encode(pubkey.compress().as_bytes()));
+
     Ok(commitments)
   }
 
@@ -135,7 +139,7 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
       power_of_two *= two;
     }
     if !res.is_torsion_free() {
-      anyhow::bail!("DLEQ public key has torsion");
+      anyhow::bail!("DL Eq public key has torsion");
     }
     Ok(res)
   }
@@ -166,16 +170,13 @@ impl<D: Digest<OutputSize = U64>> DlEqEngine for Ed25519Engine<D> {
 
   #[allow(non_snake_case)]
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()> {
-    let mut hram = [0u8; 64];
-    let hash = D::new()
-      .chain(&signature.R.compress().as_bytes())
-      .chain(&public_key.compress().as_bytes())
-      .chain(message)
-      .finalize();
-    hram.copy_from_slice(&hash);
-    let c = Scalar::from_bytes_mod_order_wide(&hram);
-    let expected_R = &signature.s * &ED25519_BASEPOINT_TABLE - c * public_key;
-    if expected_R == signature.R {
+    let c = Scalar::from_hash(
+      D::new()
+        .chain(signature.R.compress().as_bytes())
+        .chain(public_key.compress().as_bytes())
+        .chain(message)
+    );
+    if EdwardsPoint::vartime_double_scalar_mul_basepoint(&-c, &public_key, &signature.s) == signature.R {
       Ok(())
     } else {
       Err(anyhow::anyhow!("Bad signature"))

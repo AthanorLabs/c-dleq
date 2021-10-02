@@ -6,21 +6,21 @@ use rand::{RngCore, rngs::OsRng};
 use sha2::{Sha256, digest::Digest};
 
 pub mod engines;
-use crate::engines::DlEqEngine;
+use crate::engines::DLEqEngine;
 
 /// The number of bits shared keys can be specified with.
 /// Limited by Jubjub's scalar modulus, which is 2^251 and change.
 // TODO: Make this calculated at runtime based on the curves in question
 pub const SHARED_KEY_BITS: usize = 251;
 
-pub struct DlEqProof<EngineA: DlEqEngine, EngineB: DlEqEngine> {
+pub struct DLEqProof<EngineA: DLEqEngine, EngineB: DLEqEngine> {
   base_commitments: Vec<(EngineA::PublicKey, EngineB::PublicKey)>,
   first_challenges: Vec<[u8; 32]>,
   s_values: Vec<[(EngineA::PrivateKey, EngineB::PrivateKey); 2]>,
   signatures: (EngineA::Signature, EngineB::Signature),
 }
 
-impl<EngineA: DlEqEngine, EngineB: DlEqEngine> DlEqProof<EngineA, EngineB> {
+impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
   pub fn new() -> (Self, EngineA::PrivateKey, EngineB::PrivateKey) {
     let mut key = [0u8; 32];
     OsRng.fill_bytes(&mut key);
@@ -89,7 +89,7 @@ impl<EngineA: DlEqEngine, EngineB: DlEqEngine> DlEqProof<EngineA, EngineB> {
     let key_b_hash: [u8; 32] = Sha256::digest(&EngineB::public_key_to_bytes(&EngineB::to_public_key(&key_b))).into();
     let sig_b = EngineB::sign(&key_b, &key_b_hash).unwrap();
     (
-      DlEqProof {
+      DLEqProof {
         base_commitments,
         first_challenges,
         s_values,
@@ -128,19 +128,19 @@ impl<EngineA: DlEqEngine, EngineB: DlEqEngine> DlEqProof<EngineA, EngineB> {
         .finalize()
         .into();
       if first_challenge != check_first_challenge {
-        anyhow::bail!("Bad dleq proof! Regenerated challenge didn't match expected");
+        anyhow::bail!("Bad DL Eq proof! Regenerated challenge didn't match expected");
       }
     }
     let key_a = EngineA::reconstruct_key(self.base_commitments.iter().map(|c| &c.0))?;
     let key_a_hash: [u8; 32] = Sha256::digest(&EngineA::public_key_to_bytes(&key_a)).into();
     EngineA::verify_signature(&key_a, &key_a_hash, &self.signatures.0)
-      .context("Error verifying signature for dleq public key A")?;
+      .context("Error verifying signature for DL Eq public key A")?;
     let key_b = EngineB::reconstruct_key(self.base_commitments.iter().map(|c| &c.1))?;
     let key_b_hash: [u8; 32] = Sha256::digest(&EngineB::public_key_to_bytes(&key_b)).into();
     EngineB::verify_signature(&key_b, &key_b_hash, &self.signatures.1)
-      .context("Error verifying signature for dleq public key B")?;
+      .context("Error verifying signature for DL Eq public key B")?;
     trace!(
-      "Verified dleq proof for keys {} and {}",
+      "Verified DL Eq proof for keys {} and {}",
       hex::encode(EngineA::public_key_to_bytes(&key_a)),
       hex::encode(EngineB::public_key_to_bytes(&key_b))
     );

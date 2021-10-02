@@ -11,12 +11,12 @@ use secp256kfun::{marker::*, Scalar, Point, G, g, s};
 
 use crate::{
   SHARED_KEY_BITS,
-  engines::{Commitment, DlEqEngine}
+  engines::{Commitment, DLEqEngine}
 };
 
 lazy_static! {
   // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97
-  // See comments on the ed25519 engine about pub status
+  // See comments on the Ed25519 engine about pub status
   pub static ref ALT_BASEPOINT: Point = {
     Point::from_bytes(hex!("0250929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"))
       .expect("Alternate basepoint is invalid")
@@ -39,7 +39,7 @@ pub struct SecpSignature {
 }
 
 pub struct Secp256k1Engine;
-impl DlEqEngine for Secp256k1Engine {
+impl DLEqEngine for Secp256k1Engine {
   type PrivateKey = Scalar;
   type PublicKey = Point;
   type Signature = SecpSignature;
@@ -99,7 +99,7 @@ impl DlEqEngine for Secp256k1Engine {
       &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
       &pubkey
     );
-    debug!("Generated dleq proof for secp256k1 pubkey {}", hex::encode(pubkey.to_bytes()));
+    debug!("Generated DL Eq proof for secp256k1 pubkey {}", hex::encode(pubkey.to_bytes()));
     Ok(commitments)
   }
 
