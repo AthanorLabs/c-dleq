@@ -3,8 +3,8 @@
 use ff::PrimeField;
 
 use dleq::{
-  engines::DLEqEngine,
   engines::{
+    DLEqEngine,
     ed25519::Ed25519Sha,
     ristretto::RistrettoEngine,
     secp256k1::Secp256k1Engine,

@@ -1,8 +1,9 @@
 use hex_literal::hex;
 
-use k256::elliptic_curve::group::ff::PrimeField;
-use k256::elliptic_curve::group::GroupEncoding;
-use k256::{elliptic_curve::generic_array::GenericArray, Scalar, ProjectivePoint};
+use k256::{
+  elliptic_curve::{generic_array::GenericArray, group::{ff::PrimeField, GroupEncoding}},
+  Scalar, ProjectivePoint
+};
 
 use crate::engines::{BasepointProvider, ff_group::{FfGroupConversions, FfGroupEngine}};
 
