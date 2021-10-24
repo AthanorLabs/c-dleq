@@ -18,12 +18,14 @@ tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
 rand_core = "0.5"
 
-curve25519-dalek = { version = "3.2", features = ["serde"] }
-ff = "0.10"
-group = "0.10"
-k256 = "0.9"
-p256 = "0.9"
-jubjub = "0.7"
+curve25519-dalek = { version = "3.2", optional = true }
+
+ff    = { version = "0.10", optional = true }
+group = { version = "0.10", optional = true }
+
+k256   = { version = "0.9", optional = true }
+p256   = { version = "0.9", optional = true }
+jubjub = { version = "0.7", optional = true }
 
 # TODO: Potentially remove the below
 log = "0.4.8"
@@ -34,3 +36,13 @@ anyhow = "1"
 [dev-dependencies]
 rand = "0.7"
 env_logger = "0.9"
+
+[features]
+default = ["dalek-dleq", "k256-dleq"]
+# dleq appended due to later conflicts with dependency names
+# Until namespaced features are available outside of nightly...
+dalek-dleq = ["curve25519-dalek"]
+ffgroup = ["ff", "group"]
+k256-dleq = ["ffgroup", "k256"]
+p256-dleq = ["ffgroup", "p256"]
+jubjub-dleq = ["ffgroup", "jubjub"]

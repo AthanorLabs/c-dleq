@@ -1,16 +1,16 @@
 use rand::thread_rng;
 
-use dleq::{
-  engines::DLEqEngine,
-  engines::{
-    ed25519::Ed25519Sha,
-    ristretto::RistrettoEngine,
-    secp256k1::Secp256k1Engine,
-    p256::P256Engine,
-    jubjub::JubjubEngine
-  },
-  DLEqProof
-};
+use dleq::{engines::DLEqEngine, DLEqProof};
+#[cfg(feature = "dalek-dleq")]
+use dleq::engines::ed25519::Ed25519Sha;
+#[cfg(feature = "dalek-dleq")]
+use dleq::engines::ristretto::RistrettoEngine;
+#[cfg(feature = "k256-dleq")]
+use dleq::engines::secp256k1::Secp256k1Engine;
+#[cfg(feature = "p256-dleq")]
+use dleq::engines::p256::P256Engine;
+#[cfg(feature = "jubjub-dleq")]
+use dleq::engines::jubjub::JubjubEngine;
 
 fn test_with<EngineA: DLEqEngine, EngineB: DLEqEngine>() {
   let _ = env_logger::builder().is_test(true).try_init();
@@ -30,90 +30,105 @@ fn test_with<EngineA: DLEqEngine, EngineB: DLEqEngine>() {
 
 // Doesn't bother with the Blake variant as that only affects the hash algorithm used when signing
 // Its validity when signing is tested elsewhere
+#[cfg(feature = "dalek-dleq")]
 #[test]
 fn ed25519_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Sha, Ed25519Sha>();
 }
 
+#[cfg(feature = "dalek-dleq")]
 #[test]
 fn ed25519_with_ristretto() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Sha, RistrettoEngine>();
 }
 
+#[cfg(all(feature = "dalek-dleq", feature = "k256-dleq"))]
 #[test]
 fn ed25519_with_secp256k1() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Sha, Secp256k1Engine>();
 }
 
+#[cfg(all(feature = "dalek-dleq", feature = "p256-dleq"))]
 #[test]
 fn ed25519_with_p256() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Sha, P256Engine>();
 }
 
+#[cfg(all(feature = "dalek-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn ed25519_with_jubjub() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Sha, JubjubEngine>();
 }
 
+#[cfg(feature = "dalek-dleq")]
 #[test]
 fn ristretto_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, RistrettoEngine>();
 }
 
+#[cfg(all(feature = "dalek-dleq", feature = "k256-dleq"))]
 #[test]
 fn ristretto_with_secp256k1() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, Secp256k1Engine>();
 }
 
+#[cfg(all(feature = "dalek-dleq", feature = "p256-dleq"))]
 #[test]
 fn ristretto_with_p256() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, P256Engine>();
 }
 
+#[cfg(all(feature = "dalek-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn ristretto_with_jubjub() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, JubjubEngine>();
 }
 
+#[cfg(feature = "k256-dleq")]
 #[test]
 fn secp256k1_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Secp256k1Engine, Secp256k1Engine>();
 }
 
+#[cfg(all(feature = "k256-dleq", feature = "p256-dleq"))]
 #[test]
 fn secp256k1_with_p256() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Secp256k1Engine, P256Engine>();
 }
 
+#[cfg(all(feature = "k256-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn secp256k1_with_jubub() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Secp256k1Engine, JubjubEngine>();
 }
 
+#[cfg(feature = "p256-dleq")]
 #[test]
 fn p256_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<P256Engine, P256Engine>();
 }
 
+#[cfg(all(feature = "p256-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn p256_with_jubub() {
   let _ = env_logger::builder().is_test(true).try_init();
   test_with::<P256Engine, JubjubEngine>();
 }
 
+#[cfg(feature = "jubjub")]
 #[test]
 fn jubub_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();

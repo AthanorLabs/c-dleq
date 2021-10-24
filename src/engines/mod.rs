@@ -1,11 +1,17 @@
 use rand_core::{RngCore, CryptoRng};
 
+#[cfg(feature = "dalek-dleq")]
 pub mod ed25519;
+#[cfg(feature = "dalek-dleq")]
 pub mod ristretto;
 
+#[cfg(feature = "ffgroup")]
 pub mod ff_group;
+#[cfg(feature = "k256-dleq")]
 pub mod secp256k1;
+#[cfg(feature = "p256-dleq")]
 pub mod p256;
+#[cfg(feature = "jubjub-dleq")]
 pub mod jubjub;
 
 #[allow(non_snake_case)]
