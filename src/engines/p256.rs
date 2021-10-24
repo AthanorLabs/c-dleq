@@ -1,13 +1,15 @@
+// AKA secp256r1 AKA prime256v1
+
 use hex_literal::hex;
 
-use k256::elliptic_curve::group::ff::PrimeField;
-use k256::elliptic_curve::group::GroupEncoding;
-use k256::{elliptic_curve::generic_array::GenericArray, Scalar, ProjectivePoint};
+use p256::elliptic_curve::group::ff::PrimeField;
+use p256::elliptic_curve::group::GroupEncoding;
+use p256::{elliptic_curve::generic_array::GenericArray, Scalar, ProjectivePoint};
 
 use crate::engines::{BasepointProvider, ff_group::{FfGroupConversions, FfGroupEngine}};
 
-pub struct Secp256k1Conversions;
-impl FfGroupConversions for Secp256k1Conversions {
+pub struct P256Conversions;
+impl FfGroupConversions for P256Conversions {
   type Scalar = Scalar;
   type Point = ProjectivePoint;
 
@@ -30,8 +32,8 @@ impl FfGroupConversions for Secp256k1Conversions {
   }
 }
 
-pub struct Secp256k1Basepoints;
-impl BasepointProvider for Secp256k1Basepoints {
+pub struct P256Basepoints;
+impl BasepointProvider for P256Basepoints {
   type Point = ProjectivePoint;
 
   fn basepoint() -> Self::Point {
@@ -39,12 +41,10 @@ impl BasepointProvider for Secp256k1Basepoints {
   }
 
   fn alt_basepoint() -> Self::Point {
-    // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97
-    // See comments on the Ed25519 engine about pub status
     ProjectivePoint::from_bytes(
-      &GenericArray::from_slice(&hex!("0250929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"))
+      &GenericArray::from_slice(&hex!("02698bea63dc44a344663ff1429aea10842df27b6b991ef25866b2c6c02cdcc5be"))
     ).unwrap()
   }
 }
 
-pub type Secp256k1Engine = FfGroupEngine<Scalar, ProjectivePoint, Secp256k1Conversions, Secp256k1Basepoints>;
+pub type P256Engine = FfGroupEngine<Scalar, ProjectivePoint, P256Conversions, P256Basepoints>;

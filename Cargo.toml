@@ -11,19 +11,19 @@ lazy_static = "1"
 hex-literal = "0.3"
 hex = "0.4"
 
-secp256kfun = { version = "0.6.2", features = ["default", "serde"] }
-curve25519-dalek = { version = "3.2", features = ["serde"] }
-ff = "0.8"
-group = "0.8"
-jubjub = "0.5"
-zcash_primitives = "0.5.0"
-
 digest = "0.9"
 sha2 = "0.9"
 blake2 = "0.9"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
 rand_core = "0.5"
+
+curve25519-dalek = { version = "3.2", features = ["serde"] }
+ff = "0.10"
+group = "0.10"
+k256 = "0.9"
+p256 = "0.9"
+jubjub = "0.7"
 
 # TODO: Potentially remove the below
 log = "0.4.8"

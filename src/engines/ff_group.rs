@@ -33,8 +33,8 @@ pub trait FfGroupConversions {
 // Workaround for lack of const generics, which are available as of 1.51 as experimental
 // That said, not requiring experimental features is great, so anything which moves us closer to that...
 pub struct FfGroupEngine<
-  F: PrimeField<Repr = [u8; 32]>,
-  G: PrimeGroup<Repr = [u8; 32]> + GroupOps + GroupOpsOwned + ScalarMul<F> + ScalarMulOwned<F>,
+  F: PrimeField,
+  G: PrimeGroup + GroupOps + GroupOpsOwned + ScalarMul<F> + ScalarMulOwned<F>,
   C: FfGroupConversions<Scalar = F, Point = G>,
   B: BasepointProvider<Point = G>
 > {
@@ -45,8 +45,8 @@ pub struct FfGroupEngine<
 }
 
 impl<
-  F: PrimeField<Repr = [u8; 32]>,
-  G: PrimeGroup<Repr = [u8; 32]> + GroupOps + GroupOpsOwned + ScalarMul<F> + ScalarMulOwned<F>,
+  F: PrimeField,
+  G: PrimeGroup + GroupOps + GroupOpsOwned + ScalarMul<F> + ScalarMulOwned<F>,
   C: FfGroupConversions<Scalar = F, Point = G>,
   B: BasepointProvider<Point = G>
 > DLEqEngine for FfGroupEngine<F, G, C, B> {
@@ -84,6 +84,7 @@ impl<
       let mut bytes = [0; 32];
       rng.fill_bytes(&mut bytes);
       let scalar = C::scalar_from_bytes_mod(bytes);
+      // Removes the need for a canonical decode, AKA an extra method requirement for the defined API
       if C::scalar_to_bytes(&scalar) == bytes {
         return scalar;
       }
@@ -132,7 +133,7 @@ impl<
     debug_assert_eq!(blinding_key_total, F::zero());
     debug_assert_eq!(
       Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
-      B::basepoint() * F::from_repr(key).ok_or(anyhow::anyhow!("Generating commitments for invalid scalar"))?
+      B::basepoint() * C::little_endian_bytes_to_scalar(key).expect("Generating commitments for invalid scalar")
     );
 
     Ok(commitments)

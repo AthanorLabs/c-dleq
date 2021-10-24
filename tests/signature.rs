@@ -2,8 +2,10 @@ use rand::thread_rng;
 
 use dleq::engines::{
   DLEqEngine,
-  secp256k1::Secp256k1Engine,
   ed25519::{Ed25519Sha, Ed25519Blake},
+  ristretto::RistrettoEngine,
+  secp256k1::Secp256k1Engine,
+  p256::P256Engine,
   jubjub::JubjubEngine
 };
 
@@ -19,18 +21,28 @@ fn test_signature<E: DLEqEngine>() {
 }
 
 #[test]
-fn secp256k1_signature() {
-  test_signature::<Secp256k1Engine>();
-}
-
-#[test]
 fn ed25519_signature() {
   test_signature::<Ed25519Sha>();
   test_signature::<Ed25519Blake>();
 }
 
-// Actually ff_group, not Jubjub, yet it can't hurt to preserve per-curve tests in this fashion
-// It does technically confirm the basepoint isn't 0, yet that's such an obscene case it's not really worth it
+#[test]
+fn ristretto_signature() {
+  test_signature::<RistrettoEngine>();
+}
+
+// Actually ff_group, not secp256k1, yet it can't hurt to preserve per-curve tests in this fashion
+// It does technically confirm the basepoint isn't 0, yet that's such an obscene case it's not really worth mentioning
+#[test]
+fn secp256k1_signature() {
+  test_signature::<Secp256k1Engine>();
+}
+
+#[test]
+fn p256_signature() {
+  test_signature::<P256Engine>();
+}
+
 #[test]
 fn jubjub_signature() {
   test_signature::<JubjubEngine>();
