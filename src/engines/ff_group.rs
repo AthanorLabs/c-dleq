@@ -6,7 +6,7 @@ use std::{
 
 use rand::rngs::OsRng;
 use digest::Digest;
-use blake2::Blake2b;
+use sha2::Sha256;
 
 use ff::PrimeField;
 use group::{GroupOps, GroupOpsOwned, ScalarMul, ScalarMulOwned, prime::PrimeGroup};
@@ -154,6 +154,11 @@ impl<
     Ok(B::alt_basepoint() * key)
   }
 
+  // Uses SHA2 instead of Blake2b as this is planned to be used with P-256 and secp256k1 which generally use SHA2
+  // They also generally use ECDSA, yet any other library will already have extensive scalar/point operations
+  // Because of that, this should be incredibly feasible to replicate as needed, voiding the need for ECDSA
+  // That said, the usage of Blake would add an extra dependency and could be much more obnoxious
+  // Schnorr is still preferred over ECDSA for technical superiority and rising levels of adoptance
   fn sign(key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature> {
     let k = F::random(&mut OsRng);
     #[allow(non_snake_case)]
@@ -161,7 +166,7 @@ impl<
 
     let mut to_hash = C::point_to_bytes(&R);
     to_hash.extend(message);
-    let s = k - (*key * C::scalar_from_bytes_mod(Blake2b::digest(&to_hash)[..32].try_into().unwrap()));
+    let s = k - (*key * C::scalar_from_bytes_mod(Sha256::digest(&to_hash)[..32].try_into().unwrap()));
 
     Ok(Signature { R, s })
   }
@@ -170,7 +175,7 @@ impl<
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()> {
     let mut to_hash = C::point_to_bytes(&signature.R);
     to_hash.extend(message);
-    let c = C::scalar_from_bytes_mod(Blake2b::digest(&to_hash)[..32].try_into().unwrap());
+    let c = C::scalar_from_bytes_mod(Sha256::digest(&to_hash)[..32].try_into().unwrap());
     let expected_R = (B::basepoint() * signature.s) + (*public_key * c);
     if expected_R == signature.R {
       Ok(())

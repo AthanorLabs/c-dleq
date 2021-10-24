@@ -85,6 +85,8 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
       }
       base_commitments.push((comm_a.commitment, comm_b.commitment));
     }
+
+    // The key must be the message in order to provide a proof of knowledge
     let key_a = EngineA::little_endian_bytes_to_private_key(key).unwrap();
     let key_a_hash: [u8; 32] = Sha256::digest(&EngineA::public_key_to_bytes(&EngineA::to_public_key(&key_a))).into();
     let sig_a = EngineA::sign(&key_a, &key_a_hash).unwrap();
