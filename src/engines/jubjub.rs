@@ -21,6 +21,10 @@ impl FfGroupConversions for JubjubConversions {
     Fr::from_repr(bytes).ok_or(anyhow::anyhow!("Invalid scalar"))
   }
 
+  fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32] {
+    scalar.to_bytes()
+  }
+
   fn point_to_bytes(point: &Self::Point) -> Vec<u8> {
      point.to_bytes().to_vec()
   }

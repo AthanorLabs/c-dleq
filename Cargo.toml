@@ -23,11 +23,14 @@ sha2 = "0.9"
 blake2 = "0.9"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
+rand_core = "0.5"
+
+# TODO: Potentially remove the below
 log = "0.4.8"
 
-# TODO: Remove the below (rand -> rand_core)
-rand = { version = "0.7", features = ["std"] }
+# TODO: Remove the below
 anyhow = "1"
 
 [dev-dependencies]
+rand = "0.7"
 env_logger = "0.9"

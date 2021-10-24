@@ -1,3 +1,5 @@
+use rand::thread_rng;
+
 use dleq::engines::{
   DLEqEngine,
   secp256k1::Secp256k1Engine,
@@ -6,7 +8,7 @@ use dleq::engines::{
 };
 
 fn test_signature<E: DLEqEngine>() {
-  let key = E::new_private_key();
+  let key = E::new_private_key(&mut thread_rng());
   let sig = E::sign(&key, &[1; 32]).expect("Couldn't call sign");
   let diff_sig = E::sign(&key, &[2; 32]).expect("Couldn't call sign");
   E::verify_signature(&E::to_public_key(&key), &[1; 32], &sig).expect("Signature verification failed");

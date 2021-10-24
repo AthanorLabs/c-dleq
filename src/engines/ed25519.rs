@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use lazy_static::lazy_static;
 use hex_literal::hex;
 
-use rand::rngs::OsRng;
+use rand_core::{RngCore, CryptoRng};
 use digest::{Digest, generic_array::typenum::U64};
 
 use curve25519_dalek::{
@@ -62,8 +62,8 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
     252
   }
 
-  fn new_private_key() -> Self::PrivateKey {
-    Scalar::random(&mut OsRng)
+  fn new_private_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::PrivateKey {
+    Scalar::random(rng)
   }
 
   fn to_public_key(key: &Self::PrivateKey) -> Self::PublicKey {
@@ -78,7 +78,7 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
     key.compress().to_bytes().to_vec()
   }
 
-  fn generate_commitments(key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
@@ -87,7 +87,7 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
       let blinding_key = if i == (bits - 1) {
         -blinding_key_total * power_of_two.invert()
       } else {
-        Scalar::random(&mut OsRng)
+        Scalar::random(rng)
       };
       blinding_key_total += blinding_key * power_of_two;
       power_of_two *= two;
@@ -151,7 +151,7 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
 
   #[allow(non_snake_case)]
   fn sign(key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature> {
-    let r = Scalar::random(&mut OsRng);
+    let r = Scalar::from_hash(D::new().chain(key.to_bytes()));
     let R = &r * &ED25519_BASEPOINT_TABLE;
     let A = key * &ED25519_BASEPOINT_TABLE;
     let mut hram = [0u8; 64];

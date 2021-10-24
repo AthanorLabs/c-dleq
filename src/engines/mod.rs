@@ -1,3 +1,5 @@
+use rand_core::{RngCore, CryptoRng};
+
 pub mod secp256k1;
 
 pub mod ed25519;
@@ -35,13 +37,13 @@ pub trait DLEqEngine: Sized {
 
   fn scalar_bits() -> usize;
 
-  fn new_private_key() -> Self::PrivateKey;
+  fn new_private_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::PrivateKey;
   fn to_public_key(key: &Self::PrivateKey) -> Self::PublicKey;
 
   fn little_endian_bytes_to_private_key(bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey>;
   fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8>;
 
-  fn generate_commitments(key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>>;
+  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>>;
   fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey>;
   #[allow(non_snake_case)]
   fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey>;

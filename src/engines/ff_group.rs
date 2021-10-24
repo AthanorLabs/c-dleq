@@ -4,7 +4,7 @@ use std::{
   fmt::Debug
 };
 
-use rand::rngs::OsRng;
+use rand_core::{RngCore, CryptoRng};
 use digest::Digest;
 use sha2::Sha256;
 
@@ -26,6 +26,7 @@ pub trait FfGroupConversions {
 
   fn scalar_from_bytes_mod(bytes: [u8; 32]) -> Self::Scalar;
   fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> anyhow::Result<Self::Scalar>;
+  fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32];
   fn point_to_bytes(point: &Self::Point) -> Vec<u8>;
 }
 
@@ -75,8 +76,18 @@ impl<
     F::CAPACITY as usize
   }
 
-  fn new_private_key() -> Self::PrivateKey {
-    F::random(&mut OsRng)
+  fn new_private_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::PrivateKey {
+    // Not all libraries routed through here have wide scalar reduction
+    // This should also not produce a biased output despite being suboptimal
+    // Doesn't use Scalar::random (which is either this or wide reduction) due to version conflicts
+    loop {
+      let mut bytes = [0; 32];
+      rng.fill_bytes(&mut bytes);
+      let scalar = C::scalar_from_bytes_mod(bytes);
+      if C::scalar_to_bytes(&scalar) == bytes {
+        return scalar;
+      }
+    }
   }
 
   fn to_public_key(key: &Self::PrivateKey) -> Self::PublicKey {
@@ -91,7 +102,7 @@ impl<
     C::point_to_bytes(key)
   }
 
-  fn generate_commitments(key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = F::zero();
     let mut power_of_two = F::one();
@@ -99,7 +110,7 @@ impl<
       let blinding_key = if i == (bits - 1) {
         -blinding_key_total * power_of_two.invert().unwrap()
       } else {
-        F::random(&mut OsRng)
+        Self::new_private_key(rng)
       };
       blinding_key_total += blinding_key * power_of_two;
       power_of_two = power_of_two.double();
@@ -160,7 +171,9 @@ impl<
   // That said, the usage of Blake would add an extra dependency and could be much more obnoxious
   // Schnorr is still preferred over ECDSA for technical superiority and rising levels of adoptance
   fn sign(key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature> {
-    let k = F::random(&mut OsRng);
+    let k = C::scalar_from_bytes_mod(
+      Sha256::new().chain(&C::scalar_to_bytes(key)).chain(message).finalize().into()
+    );
     #[allow(non_snake_case)]
     let R = B::basepoint() * k;
 

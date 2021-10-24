@@ -1,3 +1,5 @@
+use rand::thread_rng;
+
 use dleq::{
   engines::DLEqEngine,
   engines::{
@@ -11,7 +13,7 @@ use dleq::{
 
 fn test_with<EngineA: DLEqEngine, EngineB: DLEqEngine>() {
   let _ = env_logger::builder().is_test(true).try_init();
-  let (proof, skey_a, skey_b) = DLEqProof::<EngineA, EngineB>::new();
+  let (proof, skey_a, skey_b) = DLEqProof::<EngineA, EngineB>::new(&mut thread_rng());
   let (pkey_a, pkey_b) = proof.verify().expect("DL Eq proof verification failed");
   assert_eq!(hex::encode(EngineA::public_key_to_bytes(&pkey_a)), hex::encode(EngineA::public_key_to_bytes(&EngineA::to_public_key(&skey_a))));
   assert_eq!(hex::encode(EngineB::public_key_to_bytes(&pkey_b)), hex::encode(EngineB::public_key_to_bytes(&EngineB::to_public_key(&skey_b))));

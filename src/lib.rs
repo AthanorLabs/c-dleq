@@ -1,11 +1,11 @@
 use std::cmp::min;
 
-use anyhow::Context;
+use rand_core::{RngCore, CryptoRng};
+use sha2::{Sha256, digest::Digest};
 
 use log::trace;
 
-use rand::{RngCore, rngs::OsRng};
-use sha2::{Sha256, digest::Digest};
+use anyhow::Context;
 
 pub mod engines;
 use crate::engines::DLEqEngine;
@@ -18,9 +18,9 @@ pub struct DLEqProof<EngineA: DLEqEngine, EngineB: DLEqEngine> {
 }
 
 impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
-  pub fn new() -> (Self, EngineA::PrivateKey, EngineB::PrivateKey) {
+  pub fn new<R: RngCore + CryptoRng>(rng: &mut R) -> (Self, EngineA::PrivateKey, EngineB::PrivateKey) {
     let mut key = [0u8; 32];
-    OsRng.fill_bytes(&mut key);
+    rng.fill_bytes(&mut key);
 
     // Chop off bits greater than the curve modulus
     let bits = min(EngineA::scalar_bits(), EngineB::scalar_bits());
@@ -29,8 +29,8 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
                            // Likely not worth ever changing due to the security effects of doing so
     key[31] &= (!0) >> to_clear;
 
-    let full_commitments_a = EngineA::generate_commitments(key, bits).unwrap();
-    let full_commitments_b = EngineB::generate_commitments(key, bits).unwrap();
+    let full_commitments_a = EngineA::generate_commitments(rng, key, bits).unwrap();
+    let full_commitments_b = EngineB::generate_commitments(rng, key, bits).unwrap();
     assert_eq!(full_commitments_a.len(), bits);
     assert_eq!(full_commitments_b.len(), bits);
     let mut base_commitments = Vec::new();
@@ -50,8 +50,8 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         hex::encode(EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&comm_b.blinding_key).unwrap())),
         hex::encode(EngineB::public_key_to_bytes(real_comm.1))
       );
-      let future_nonce_a = EngineA::new_private_key();
-      let future_nonce_b = EngineB::new_private_key();
+      let future_nonce_a = EngineA::new_private_key(rng);
+      let future_nonce_b = EngineB::new_private_key(rng);
       let cheating_challenge: [u8; 32] = Sha256::new()
         .chain(EngineA::public_key_to_bytes(&comm_a.commitment))
         .chain(EngineB::public_key_to_bytes(&comm_b.commitment))
@@ -59,8 +59,8 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         .chain(EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&future_nonce_b).unwrap()))
         .finalize()
         .into();
-      let cheating_s_a = EngineA::new_private_key();
-      let cheating_s_b = EngineB::new_private_key();
+      let cheating_s_a = EngineA::new_private_key(rng);
+      let cheating_s_b = EngineB::new_private_key(rng);
       let real_challenge: [u8; 32] = Sha256::new()
         .chain(EngineA::public_key_to_bytes(&comm_a.commitment))
         .chain(EngineB::public_key_to_bytes(&comm_b.commitment))
