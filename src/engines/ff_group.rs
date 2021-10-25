@@ -24,10 +24,12 @@ pub trait FfGroupConversions {
   type Scalar;
   type Point;
 
+  fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32];
+  fn scalar_to_little_endian_bytes(scalar: &Self::Scalar) -> [u8; 32];
   fn scalar_from_bytes_mod(bytes: [u8; 32]) -> Self::Scalar;
   fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> anyhow::Result<Self::Scalar>;
-  fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32];
   fn point_to_bytes(point: &Self::Point) -> Vec<u8>;
+  fn bytes_to_point(point: &[u8]) -> anyhow::Result<Self::Point>;
 }
 
 // Workaround for lack of const generics, which are available as of 1.51 as experimental
@@ -99,8 +101,16 @@ impl<
     C::little_endian_bytes_to_scalar(bytes)
   }
 
+  fn private_key_to_little_endian_bytes(key: &Self::PrivateKey) -> [u8; 32] {
+    C::scalar_to_little_endian_bytes(key)
+  }
+
   fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8> {
     C::point_to_bytes(key)
+  }
+
+  fn bytes_to_public_key(key: &[u8]) -> anyhow::Result<Self::PublicKey> {
+    C::bytes_to_point(key)
   }
 
   fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
@@ -171,7 +181,7 @@ impl<
   // Because of that, this should be incredibly feasible to replicate as needed, voiding the need for ECDSA
   // That said, the usage of Blake would add an extra dependency and could be much more obnoxious
   // Schnorr is still preferred over ECDSA for technical superiority and rising levels of adoptance
-  fn sign(key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature> {
+  fn sign(key: &Self::PrivateKey, message: &[u8]) -> Self::Signature {
     let k = C::scalar_from_bytes_mod(
       Sha256::new().chain(&C::scalar_to_bytes(key)).chain(message).finalize().into()
     );
@@ -182,7 +192,7 @@ impl<
     to_hash.extend(message);
     let s = k - (*key * C::scalar_from_bytes_mod(Sha256::digest(&to_hash)[..32].try_into().unwrap()));
 
-    Ok(Signature { R, s })
+    Signature { R, s }
   }
 
   #[allow(non_snake_case)]
@@ -196,5 +206,34 @@ impl<
     } else {
       Err(anyhow::anyhow!("Bad signature"))
     }
+  }
+
+  // Could be done through Conversions
+  fn point_len() -> usize {
+    Self::public_key_to_bytes(&B::basepoint()).len()
+  }
+
+  // Point + scalar thanks to the usage of Schnorr, and this library requires 32-byte long scalars
+  fn signature_len() -> usize {
+    Self::point_len() + 32
+  }
+
+  fn signature_to_bytes(sig: &Self::Signature) -> Vec<u8> {
+    let mut res = Self::public_key_to_bytes(&sig.R);
+    res.extend(&C::scalar_to_bytes(&sig.s));
+    res
+  }
+
+  fn bytes_to_signature(sig: &[u8]) -> anyhow::Result<Self::Signature> {
+    if sig.len() != Self::signature_len() {
+      anyhow::bail!("Invalid signature length");
+    }
+    let point_len = Self::point_len();
+    Ok(
+      Self::Signature {
+        R: C::bytes_to_point(&sig[..point_len])?,
+        s: C::scalar_from_bytes_mod(sig[point_len..].try_into().expect("Signature was correct length yet didn't have a 32-byte scalar"))
+      }
+    )
   }
 }

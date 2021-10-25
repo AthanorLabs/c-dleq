@@ -12,6 +12,16 @@ impl FfGroupConversions for Secp256k1Conversions {
   type Scalar = Scalar;
   type Point = ProjectivePoint;
 
+  fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32] {
+    scalar.to_bytes().into()
+  }
+
+  fn scalar_to_little_endian_bytes(scalar: &Self::Scalar) -> [u8; 32] {
+    let mut res: [u8; 32] = scalar.to_bytes().into();
+    res.reverse();
+    res
+  }
+
   fn scalar_from_bytes_mod(scalar: [u8; 32]) -> Self::Scalar {
     Scalar::from_bytes_reduced(&scalar.into())
   }
@@ -22,12 +32,16 @@ impl FfGroupConversions for Secp256k1Conversions {
     Scalar::from_repr(bytes.into()).ok_or(anyhow::anyhow!("Invalid scalar"))
   }
 
-  fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32] {
-    scalar.to_bytes().into()
-  }
-
   fn point_to_bytes(point: &Self::Point) -> Vec<u8> {
      point.to_bytes().as_ref().to_vec()
+  }
+
+  fn bytes_to_point(bytes: &[u8]) -> anyhow::Result<Self::Point> {
+    let point = ProjectivePoint::from_bytes(GenericArray::from_slice(bytes));
+    if point.is_none().into() {
+      anyhow::bail!("Invalid point");
+    }
+    Ok(point.unwrap())
   }
 }
 

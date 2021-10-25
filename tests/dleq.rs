@@ -15,12 +15,16 @@ use dleq::engines::jubjub::JubjubEngine;
 fn test_with<EngineA: DLEqEngine, EngineB: DLEqEngine>() {
   let _ = env_logger::builder().is_test(true).try_init();
   let (proof, skey_a, skey_b) = DLEqProof::<EngineA, EngineB>::new(&mut thread_rng());
+  #[cfg(feature = "serialize")]
+  let proof = DLEqProof::<EngineA, EngineB>::deserialize(&proof.serialize().unwrap()).unwrap();
   let (pkey_a, pkey_b) = proof.verify().expect("DL Eq proof verification failed");
   assert_eq!(hex::encode(EngineA::public_key_to_bytes(&pkey_a)), hex::encode(EngineA::public_key_to_bytes(&EngineA::to_public_key(&skey_a))));
   assert_eq!(hex::encode(EngineB::public_key_to_bytes(&pkey_b)), hex::encode(EngineB::public_key_to_bytes(&EngineB::to_public_key(&skey_b))));
 
   // Test the inverse arrangement for further certainty
   let (proof, skey_b, skey_a) = DLEqProof::<EngineB, EngineA>::new(&mut thread_rng());
+  #[cfg(feature = "serialize")]
+  let proof = DLEqProof::<EngineB, EngineA>::deserialize(&proof.serialize().unwrap()).unwrap();
   let (pkey_b, pkey_a) = proof.verify().expect("DL Eq proof verification failed");
   assert_eq!(hex::encode(EngineA::public_key_to_bytes(&pkey_a)), hex::encode(EngineA::public_key_to_bytes(&EngineA::to_public_key(&skey_a))));
   assert_eq!(hex::encode(EngineB::public_key_to_bytes(&pkey_b)), hex::encode(EngineB::public_key_to_bytes(&EngineB::to_public_key(&skey_b))));
@@ -128,7 +132,7 @@ fn p256_with_jubub() {
   test_with::<P256Engine, JubjubEngine>();
 }
 
-#[cfg(feature = "jubjub")]
+#[cfg(feature = "jubjub-dleq")]
 #[test]
 fn jubub_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();

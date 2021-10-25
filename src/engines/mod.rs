@@ -46,7 +46,9 @@ pub trait DLEqEngine: Sized {
   fn to_public_key(key: &Self::PrivateKey) -> Self::PublicKey;
 
   fn little_endian_bytes_to_private_key(bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey>;
+  fn private_key_to_little_endian_bytes(key: &Self::PrivateKey) -> [u8; 32];
   fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8>;
+  fn bytes_to_public_key(key: &[u8]) -> anyhow::Result<Self::PublicKey>;
 
   fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>>;
   fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey>;
@@ -58,4 +60,9 @@ pub trait DLEqEngine: Sized {
 
   fn sign(secret_key: &Self::PrivateKey, message: &[u8]) -> Self::Signature;
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()>;
+
+  fn point_len() -> usize;
+  fn signature_len() -> usize;
+  fn signature_to_bytes(signature: &Self::Signature) -> Vec<u8>;
+  fn bytes_to_signature(signature: &[u8]) -> anyhow::Result<Self::Signature>;
 }

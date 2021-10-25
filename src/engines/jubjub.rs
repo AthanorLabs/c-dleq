@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use hex_literal::hex;
 
 use ff::PrimeField;
@@ -11,6 +13,14 @@ impl FfGroupConversions for JubjubConversions {
   type Scalar = Fr;
   type Point = SubgroupPoint;
 
+  fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32] {
+    scalar.to_bytes()
+  }
+
+  fn scalar_to_little_endian_bytes(scalar: &Self::Scalar) -> [u8; 32] {
+    scalar.to_bytes()
+  }
+
   fn scalar_from_bytes_mod(scalar: [u8; 32]) -> Self::Scalar {
     let mut wide: [u8; 64] = [0; 64];
     wide[..32].copy_from_slice(&scalar);
@@ -21,12 +31,16 @@ impl FfGroupConversions for JubjubConversions {
     Fr::from_repr(bytes).ok_or(anyhow::anyhow!("Invalid scalar"))
   }
 
-  fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32] {
-    scalar.to_bytes()
-  }
-
   fn point_to_bytes(point: &Self::Point) -> Vec<u8> {
      point.to_bytes().to_vec()
+  }
+
+  fn bytes_to_point(bytes: &[u8]) -> anyhow::Result<Self::Point> {
+    let point = SubgroupPoint::from_bytes(bytes.try_into()?);
+    if point.is_none().into() {
+      anyhow::bail!("Invalid point");
+    }
+    Ok(point.unwrap())
   }
 }
 

@@ -1,4 +1,6 @@
 use std::cmp::min;
+use std::convert::TryInto;
+use std::io::{self, Write};
 
 use rand_core::{RngCore, CryptoRng};
 use sha2::{Sha256, digest::Digest};
@@ -17,13 +19,30 @@ pub struct DLEqProof<EngineA: DLEqEngine, EngineB: DLEqEngine> {
   signatures: (EngineA::Signature, EngineB::Signature),
 }
 
+fn bits<EngineA: DLEqEngine, EngineB: DLEqEngine>() -> usize {
+  min(EngineA::scalar_bits(), EngineB::scalar_bits())
+}
+
+fn proof_size<EngineA: DLEqEngine, EngineB: DLEqEngine>() -> usize {
+  (
+    bits::<EngineA, EngineB>() *
+    (
+      (EngineA::point_len() + EngineB::point_len()) + // Commitments
+      32 +                                            // Challenges
+      (32 * 2 * 2)                                    // S values
+    )
+  ) +
+  EngineA::signature_len() +                          // Signatures
+  EngineB::signature_len()
+}
+
 impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
   pub fn new<R: RngCore + CryptoRng>(rng: &mut R) -> (Self, EngineA::PrivateKey, EngineB::PrivateKey) {
     let mut key = [0u8; 32];
     rng.fill_bytes(&mut key);
 
     // Chop off bits greater than the curve modulus
-    let bits = min(EngineA::scalar_bits(), EngineB::scalar_bits());
+    let bits = bits::<EngineA, EngineB>();
     let to_clear = 256 - bits;
     assert!(to_clear < 8); // Following algorithm has this bound
                            // Likely not worth ever changing due to the security effects of doing so
@@ -103,6 +122,84 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
       key_a,
       key_b,
     )
+  }
+
+  // This is so primitive it potentially should not be feature flagged
+  // This only exists due to how infeasible it'd be to implement something such as serde for this
+  // and to provide an extremely basic format
+  // That said, if someone wants to use their own serialization, disabling access to this could be beneficial
+  #[cfg(feature = "serialize")]
+  pub fn serialize(&self) -> io::Result<Vec<u8>> {
+    let mut res = Vec::with_capacity(proof_size::<EngineA, EngineB>());
+    for b in 0 .. bits::<EngineA, EngineB>() {
+      res.write_all(&EngineA::public_key_to_bytes(&self.base_commitments[b].0))?;
+      res.write_all(&EngineB::public_key_to_bytes(&self.base_commitments[b].1))?;
+      res.write_all(&self.first_challenges[b])?;
+      for pair in &self.s_values[b] {
+        res.write_all(&EngineA::private_key_to_little_endian_bytes(&pair.0))?;
+        res.write_all(&EngineB::private_key_to_little_endian_bytes(&pair.1))?;
+      }
+    }
+    res.write_all(&EngineA::signature_to_bytes(&self.signatures.0))?;
+    res.write_all(&EngineB::signature_to_bytes(&self.signatures.1))?;
+    debug_assert_eq!(res.len(), proof_size::<EngineA, EngineB>());
+    Ok(res)
+  }
+
+  // This was also attempted with io::Read and it did not go well
+  #[cfg(feature = "serialize")]
+  pub fn deserialize(proof: &[u8]) -> anyhow::Result<Self> {
+    if proof.len() != proof_size::<EngineA, EngineB>() {
+      anyhow::bail!("Invalid proof size");
+    }
+
+    let mut cursor = 0;
+
+    let bits = bits::<EngineA, EngineB>();
+    let mut commitments = Vec::with_capacity(bits);
+    let mut challenges = vec![];
+    let mut s_values = Vec::with_capacity(bits);
+    challenges.resize(bits, [0; 32]);
+
+    let a_point_len = EngineA::point_len();
+    let b_point_len = EngineB::point_len();
+
+    for b in 0 .. bits {
+      let precursor = cursor;
+      cursor += a_point_len;
+      commitments.push(
+        (
+          EngineA::bytes_to_public_key(&proof[precursor .. cursor])?,
+          EngineB::bytes_to_public_key(&proof[cursor .. cursor + b_point_len])?
+        )
+      );
+      cursor += b_point_len;
+
+      challenges[b].copy_from_slice(&proof[cursor .. cursor + 32]);
+      cursor += 32;
+
+      // The initial length validation makes this safe
+      s_values.push([
+        (
+          EngineA::little_endian_bytes_to_private_key(proof[cursor .. cursor + 32].try_into().unwrap())?,
+          EngineB::little_endian_bytes_to_private_key(proof[cursor + 32 .. cursor + 64].try_into().unwrap())?
+        ),
+        (
+          EngineA::little_endian_bytes_to_private_key(proof[cursor + 64 .. cursor + 96].try_into().unwrap())?,
+          EngineB::little_endian_bytes_to_private_key(proof[cursor + 96 .. cursor + 128].try_into().unwrap())?
+        ),
+      ]);
+      cursor += 128;
+    }
+
+    let sig_a = EngineA::bytes_to_signature(&proof[cursor .. cursor + EngineA::signature_len()])?;
+    cursor += EngineA::signature_len();
+    Ok(DLEqProof {
+      base_commitments: commitments,
+      first_challenges: challenges,
+      s_values,
+      signatures: (sig_a, EngineB::bytes_to_signature(&proof[cursor .. cursor + EngineB::signature_len()])?)
+    })
   }
 
   pub fn verify(&self) -> anyhow::Result<(EngineA::PublicKey, EngineB::PublicKey)> {

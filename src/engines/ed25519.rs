@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use std::convert::TryInto;
+
 use lazy_static::lazy_static;
 use hex_literal::hex;
 
@@ -74,8 +76,16 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
     Scalar::from_canonical_bytes(bytes).ok_or(anyhow::anyhow!("Invalid scalar"))
   }
 
+  fn private_key_to_little_endian_bytes(key: &Self::PrivateKey) -> [u8; 32] {
+    key.to_bytes()
+  }
+
   fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8> {
     key.compress().to_bytes().to_vec()
+  }
+
+  fn bytes_to_public_key(key: &[u8]) -> anyhow::Result<Self::PublicKey> {
+    Ok(CompressedEdwardsY::from_slice(key).decompress().ok_or(anyhow::anyhow!("Invalid point"))?)
   }
 
   fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
@@ -179,5 +189,31 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
     } else {
       Err(anyhow::anyhow!("Bad signature"))
     }
+  }
+
+  fn point_len() -> usize {
+    32
+  }
+
+  fn signature_len() -> usize {
+    64
+  }
+
+  fn signature_to_bytes(sig: &Self::Signature) -> Vec<u8> {
+    let mut res = Self::public_key_to_bytes(&sig.R);
+    res.extend(sig.s.to_bytes());
+    res
+  }
+
+  fn bytes_to_signature(sig: &[u8]) -> anyhow::Result<Self::Signature> {
+    if sig.len() != 64 {
+      anyhow::bail!("Invalid signature length");
+    }
+    Ok(
+      Self::Signature {
+        R: Self::bytes_to_public_key(&sig[..32])?,
+        s: Self::little_endian_bytes_to_private_key(sig[32..].try_into().expect("Signature was correct length yet didn't have a 32-byte scalar"))?
+      }
+    )
   }
 }
