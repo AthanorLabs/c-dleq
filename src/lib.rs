@@ -107,11 +107,9 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
 
     // The key must be the message in order to provide a proof of knowledge
     let key_a = EngineA::little_endian_bytes_to_private_key(key).unwrap();
-    let key_a_hash: [u8; 32] = Sha256::digest(&EngineA::public_key_to_bytes(&EngineA::to_public_key(&key_a))).into();
-    let sig_a = EngineA::sign(&key_a, &key_a_hash).unwrap();
+    let sig_a = EngineA::sign(&key_a, &EngineA::public_key_to_bytes(&EngineA::to_public_key(&key_a)));
     let key_b = EngineB::little_endian_bytes_to_private_key(key).unwrap();
-    let key_b_hash: [u8; 32] = Sha256::digest(&EngineB::public_key_to_bytes(&EngineB::to_public_key(&key_b))).into();
-    let sig_b = EngineB::sign(&key_b, &key_b_hash).unwrap();
+    let sig_b = EngineB::sign(&key_b, &EngineB::public_key_to_bytes(&EngineB::to_public_key(&key_b)));
     (
       DLEqProof {
         base_commitments,
@@ -237,12 +235,10 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
     }
 
     let key_a = EngineA::reconstruct_key(self.base_commitments.iter().map(|c| &c.0))?;
-    let key_a_hash: [u8; 32] = Sha256::digest(&EngineA::public_key_to_bytes(&key_a)).into();
-    EngineA::verify_signature(&key_a, &key_a_hash, &self.signatures.0)
+    EngineA::verify_signature(&key_a, &EngineA::public_key_to_bytes(&key_a), &self.signatures.0)
       .context("Error verifying signature for DL Eq public key A")?;
     let key_b = EngineB::reconstruct_key(self.base_commitments.iter().map(|c| &c.1))?;
-    let key_b_hash: [u8; 32] = Sha256::digest(&EngineB::public_key_to_bytes(&key_b)).into();
-    EngineB::verify_signature(&key_b, &key_b_hash, &self.signatures.1)
+    EngineB::verify_signature(&key_b, &EngineB::public_key_to_bytes(&key_b), &self.signatures.1)
       .context("Error verifying signature for DL Eq public key B")?;
 
     trace!(
