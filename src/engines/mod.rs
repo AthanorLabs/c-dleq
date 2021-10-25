@@ -28,7 +28,6 @@ pub struct Commitment<Engine: DLEqEngine> {
   pub commitment_minus_one: Engine::PublicKey,
 }
 
-// TODO: Have all engines support this.
 pub trait BasepointProvider {
   type Point;
   fn basepoint() -> Self::Point;

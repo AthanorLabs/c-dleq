@@ -2,7 +2,7 @@ use rand::thread_rng;
 
 use dleq::{engines::DLEqEngine, DLEqProof};
 #[cfg(feature = "dalek-dleq")]
-use dleq::engines::ed25519::Ed25519Sha;
+use dleq::engines::ed25519::Ed25519Engine;
 #[cfg(feature = "dalek-dleq")]
 use dleq::engines::ristretto::RistrettoEngine;
 #[cfg(feature = "k256-dleq")]
@@ -38,35 +38,35 @@ fn test_with<EngineA: DLEqEngine, EngineB: DLEqEngine>() {
 #[test]
 fn ed25519_with_self() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_with::<Ed25519Sha, Ed25519Sha>();
+  test_with::<Ed25519Engine, Ed25519Engine>();
 }
 
 #[cfg(feature = "dalek-dleq")]
 #[test]
 fn ed25519_with_ristretto() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_with::<Ed25519Sha, RistrettoEngine>();
+  test_with::<Ed25519Engine, RistrettoEngine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "k256-dleq"))]
 #[test]
 fn ed25519_with_secp256k1() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_with::<Ed25519Sha, Secp256k1Engine>();
+  test_with::<Ed25519Engine, Secp256k1Engine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "p256-dleq"))]
 #[test]
 fn ed25519_with_p256() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_with::<Ed25519Sha, P256Engine>();
+  test_with::<Ed25519Engine, P256Engine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn ed25519_with_jubjub() {
   let _ = env_logger::builder().is_test(true).try_init();
-  test_with::<Ed25519Sha, JubjubEngine>();
+  test_with::<Ed25519Engine, JubjubEngine>();
 }
 
 #[cfg(feature = "dalek-dleq")]

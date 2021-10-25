@@ -12,7 +12,7 @@ use curve25519_dalek::{
 
 use dleq::engines::{
   DLEqEngine,
-  ed25519::{self, Ed25519Sha, Ed25519Blake},
+  ed25519::{self, Ed25519Engine},
   ristretto::{self, RistrettoEngine}
 };
 
@@ -22,8 +22,8 @@ use crate::common::{generate_key, test_signature};
 // Tests curves don't error when handed a scalar using the amount of bits they say they can handle
 #[test]
 fn ed25519_scalar_bits() {
-  let key = generate_key(Ed25519Sha::scalar_bits());
-  assert_eq!(Ed25519Sha::little_endian_bytes_to_private_key(key).unwrap().as_bytes(), &key);
+  let key = generate_key(Ed25519Engine::scalar_bits());
+  assert_eq!(Ed25519Engine::little_endian_bytes_to_private_key(key).unwrap().as_bytes(), &key);
 }
 
 #[test]
@@ -59,8 +59,7 @@ fn alt_ristretto() {
 // Tests the signature function provided by this engine.
 #[test]
 fn ed25519_signature() {
-  test_signature::<Ed25519Sha>();
-  test_signature::<Ed25519Blake>();
+  test_signature::<Ed25519Engine>();
 }
 
 #[test]

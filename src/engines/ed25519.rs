@@ -1,12 +1,10 @@
-use std::marker::PhantomData;
-
 use std::convert::TryInto;
 
 use lazy_static::lazy_static;
 use hex_literal::hex;
 
 use rand_core::{RngCore, CryptoRng};
-use digest::{Digest, generic_array::typenum::U64};
+use digest::Digest;
 
 use curve25519_dalek::{
   constants::{ED25519_BASEPOINT_TABLE, ED25519_BASEPOINT_POINT},
@@ -35,27 +33,8 @@ pub struct Signature {
   s: Scalar
 }
 
-/*
-  As far as any DL EQ crate is concerned, this is pointless
-  SHA should be used as it's incredibly standard and a lot of Ed25519 libraries don't even offer hash function parameterization
-  That means compatibility concerns with other libraries
-  That said, this crate needs a signature algorithm and provides its own implementation as Rust curve libs generally don't offer one
-  Said implementation is designed to pair well with the curve for practical application usage
-  If this crate disregarded applications, it could just use Schnorr everywhere and call it a day
-  That said, it's considerate to not force downstream apps to write their own signature algorithm impl when there's one here
-  As part of that, this project has a known user which does require Ed25519 with Blake2b
-  ~8 simple lines here prevents ~30 lines of complexity elsewhere
-  The final kicker is said user is a standing dependant existant from before this was even a crate, grandfathering it in
-
-  TODO: Have a single Engine and just move the signing algorithm out of it
-*/
-pub struct Ed25519Engine<D: Digest<OutputSize = U64>> {
-  _phantom: PhantomData<D>,
-}
-pub type Ed25519Sha = Ed25519Engine<sha2::Sha512>;
-pub type Ed25519Blake = Ed25519Engine<blake2::Blake2b>;
-
-impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
+pub struct Ed25519Engine;
+impl DLEqEngine for Ed25519Engine {
   type PrivateKey = Scalar;
   type PublicKey = EdwardsPoint;
   type Signature = Signature;
@@ -161,11 +140,11 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
 
   #[allow(non_snake_case)]
   fn sign(key: &Self::PrivateKey, message: &[u8]) -> Self::Signature {
-    let r = Scalar::from_hash(D::new().chain(key.to_bytes()));
+    let r = Scalar::from_hash(sha2::Sha512::new().chain(key.to_bytes()));
     let R = &r * &ED25519_BASEPOINT_TABLE;
     let A = key * &ED25519_BASEPOINT_TABLE;
     let mut hram = [0u8; 64];
-    let hash = D::new()
+    let hash = sha2::Sha512::new()
       .chain(&R.compress().as_bytes())
       .chain(&A.compress().as_bytes())
       .chain(message)
@@ -179,7 +158,7 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
   #[allow(non_snake_case)]
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()> {
     let c = Scalar::from_hash(
-      D::new()
+      sha2::Sha512::new()
         .chain(signature.R.compress().as_bytes())
         .chain(public_key.compress().as_bytes())
         .chain(message)
