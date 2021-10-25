@@ -56,6 +56,6 @@ pub trait DLEqEngine: Sized {
   fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey>;
   fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey>;
 
-  fn sign(secret_key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature>;
+  fn sign(secret_key: &Self::PrivateKey, message: &[u8]) -> Self::Signature;
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()>;
 }

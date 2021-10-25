@@ -150,7 +150,7 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
   }
 
   #[allow(non_snake_case)]
-  fn sign(key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature> {
+  fn sign(key: &Self::PrivateKey, message: &[u8]) -> Self::Signature {
     let r = Scalar::from_hash(D::new().chain(key.to_bytes()));
     let R = &r * &ED25519_BASEPOINT_TABLE;
     let A = key * &ED25519_BASEPOINT_TABLE;
@@ -163,10 +163,7 @@ impl<D: Digest<OutputSize = U64>> DLEqEngine for Ed25519Engine<D> {
     hram.copy_from_slice(&hash);
     let c = Scalar::from_bytes_mod_order_wide(&hram);
     let s = r + c * key;
-    Ok(Signature {
-      R,
-      s,
-    })
+    Signature { R, s }
   }
 
   #[allow(non_snake_case)]

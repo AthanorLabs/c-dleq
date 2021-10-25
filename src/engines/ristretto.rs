@@ -124,7 +124,7 @@ impl DLEqEngine for RistrettoEngine {
     Ok(key * *ALT_BASEPOINT)
   }
 
-  fn sign(key: &Self::PrivateKey, message: &[u8]) -> anyhow::Result<Self::Signature> {
+  fn sign(key: &Self::PrivateKey, message: &[u8]) -> Self::Signature {
       let k = Scalar::from_hash(Blake2b::new().chain(key.to_bytes()).chain(message));
       #[allow(non_snake_case)]
       let R = &RISTRETTO_BASEPOINT_POINT * k;
@@ -133,7 +133,7 @@ impl DLEqEngine for RistrettoEngine {
       to_hash.extend(message);
       let s = k - (*key * Scalar::from_bytes_mod_order(Blake2b::digest(&to_hash)[..32].try_into().unwrap()));
 
-      Ok(Signature { R, s })
+      Signature { R, s }
   }
 
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()> {
