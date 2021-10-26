@@ -64,7 +64,11 @@ impl DLEqEngine for Ed25519Engine {
   }
 
   fn bytes_to_public_key(key: &[u8]) -> anyhow::Result<Self::PublicKey> {
-    Ok(CompressedEdwardsY::from_slice(key).decompress().ok_or(anyhow::anyhow!("Invalid point"))?)
+    let res = CompressedEdwardsY::from_slice(key).decompress().ok_or(anyhow::anyhow!("Invalid point"))?;
+    if !res.is_torsion_free() {
+      anyhow::bail!("Point has torsion");
+    }
+    Ok(res)
   }
 
   fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
