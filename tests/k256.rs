@@ -6,7 +6,7 @@ use sha2::{digest::generic_array::GenericArray, Sha256};
 use group::GroupEncoding;
 use k256::{elliptic_curve::sec1::ToEncodedPoint, ProjectivePoint};
 
-use dleq::engines::{BasepointProvider, DLEqEngine, secp256k1::{Secp256k1Basepoints, Secp256k1Engine}};
+use dleq::engines::{BasepointProvider, DLEqEngine, k256::{Secp256k1Basepoints, Secp256k1Engine}};
 
 mod common;
 use crate::common::{generate_key, test_signature};

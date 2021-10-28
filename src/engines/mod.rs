@@ -8,11 +8,13 @@ pub mod ristretto;
 #[cfg(feature = "ffgroup")]
 pub mod ff_group;
 #[cfg(feature = "k256-dleq")]
-pub mod secp256k1;
+pub mod k256;
 #[cfg(feature = "p256-dleq")]
 pub mod p256;
 #[cfg(feature = "jubjub-dleq")]
 pub mod jubjub;
+#[cfg(feature = "secp256kfun-dleq")]
+pub mod secp256kfun;
 
 #[allow(non_snake_case)]
 pub struct KeyBundle {

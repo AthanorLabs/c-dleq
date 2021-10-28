@@ -27,6 +27,8 @@ k256   = { version = "0.9", optional = true }
 p256   = { version = "0.9", optional = true }
 jubjub = { version = "0.7", optional = true }
 
+secp256kfun = { version = "0.6", features = ["std"], default-features = false, optional = true }
+
 # TODO: Potentially remove the below
 log = "0.4.8"
 
@@ -46,4 +48,5 @@ ffgroup = ["ff", "group"]
 k256-dleq = ["ffgroup", "k256"]
 p256-dleq = ["ffgroup", "p256"]
 jubjub-dleq = ["ffgroup", "jubjub"]
+secp256kfun-dleq = ["secp256kfun"]
 serialize = []
