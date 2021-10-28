@@ -71,7 +71,7 @@ impl DLEqEngine for Ed25519Engine {
     Ok(res)
   }
 
-  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> Vec<Commitment<Self>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
@@ -95,25 +95,25 @@ impl DLEqEngine for Ed25519Engine {
       commitments.push(Commitment {
         blinding_key,
         commitment_minus_one,
-        commitment,
+        commitment
       });
     }
 
     debug_assert_eq!(blinding_key_total, Scalar::zero());
-    let pubkey = &Scalar::from_canonical_bytes(key).ok_or(
-      anyhow::anyhow!("Generating commitments for too large scalar")
-    )? * &ED25519_BASEPOINT_TABLE;
+    let pubkey = &Scalar::from_canonical_bytes(key).expect(
+      "Generating commitments for an invalid Ed25519 key"
+    ) * &ED25519_BASEPOINT_TABLE;
     debug_assert_eq!(
-      &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
+      &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment)).expect("Reconstructed our own key with torsion"),
       &pubkey
     );
     debug!("Generated DL Eq proof for Ed25519 pubkey {}", hex::encode(pubkey.compress().as_bytes()));
 
-    Ok(commitments)
+    commitments
   }
 
-  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
-    Ok(nonce + Scalar::from_bytes_mod_order(challenge) * key)
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> Self::PrivateKey {
+    nonce + Scalar::from_bytes_mod_order(challenge) * key
   }
 
   fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
@@ -133,13 +133,13 @@ impl DLEqEngine for Ed25519Engine {
       power_of_two *= two;
     }
     if !res.is_torsion_free() {
-      anyhow::bail!("DL Eq public key has torsion");
+      panic!("A key with torsion entered the system despite ensuring scalars don't have high bits sent and points don't have torsion");
     }
     Ok(res)
   }
 
-  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
-    Ok(key * *ALT_BASEPOINT)
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> Self::PublicKey {
+    key * *ALT_BASEPOINT
   }
 
   #[allow(non_snake_case)]
@@ -170,7 +170,7 @@ impl DLEqEngine for Ed25519Engine {
     if EdwardsPoint::vartime_double_scalar_mul_basepoint(&-c, &public_key, &signature.s) == signature.R {
       Ok(())
     } else {
-      Err(anyhow::anyhow!("Bad signature"))
+      anyhow::bail!("Bad signature");
     }
   }
 
@@ -195,7 +195,9 @@ impl DLEqEngine for Ed25519Engine {
     Ok(
       Self::Signature {
         R: Self::bytes_to_public_key(&sig[..32])?,
-        s: Self::little_endian_bytes_to_private_key(sig[32..].try_into().expect("Signature was correct length yet didn't have a 32-byte scalar"))?
+        s: Self::little_endian_bytes_to_private_key(sig[32..].try_into().expect(
+          "Signature was correct length yet didn't have a 32-byte scalar"
+        ))?
       }
     )
   }

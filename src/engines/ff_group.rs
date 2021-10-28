@@ -113,7 +113,7 @@ impl<
     C::bytes_to_point(key)
   }
 
-  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> Vec<Commitment<Self>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = F::zero();
     let mut power_of_two = F::one();
@@ -142,15 +142,15 @@ impl<
 
     debug_assert_eq!(blinding_key_total, F::zero());
     debug_assert_eq!(
-      Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
+      Self::reconstruct_key(commitments.iter().map(|c| &c.commitment)).expect("Reconstructed our key to invalid despite none being"),
       B::basepoint() * C::little_endian_bytes_to_scalar(key).expect("Generating commitments for invalid scalar")
     );
 
-    Ok(commitments)
+    commitments
   }
 
-  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
-    Ok((C::scalar_from_bytes_mod(challenge) * key) + nonce)
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> Self::PrivateKey {
+    (C::scalar_from_bytes_mod(challenge) * key) + nonce
   }
 
   #[allow(non_snake_case)]
@@ -172,8 +172,8 @@ impl<
     Ok(res)
   }
 
-  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
-    Ok(B::alt_basepoint() * key)
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> Self::PublicKey {
+    B::alt_basepoint() * key
   }
 
   // Uses SHA2 instead of Blake2b as this is planned to be used with P-256 and secp256k1 which generally use SHA2
@@ -204,7 +204,7 @@ impl<
     if expected_R == signature.R {
       Ok(())
     } else {
-      Err(anyhow::anyhow!("Bad signature"))
+      anyhow::bail!("Bad signature");
     }
   }
 
@@ -232,7 +232,9 @@ impl<
     Ok(
       Self::Signature {
         R: C::bytes_to_point(&sig[..point_len])?,
-        s: C::scalar_from_bytes_mod(sig[point_len..].try_into().expect("Signature was correct length yet didn't have a 32-byte scalar"))
+        s: C::scalar_from_bytes_mod(sig[point_len..].try_into().expect(
+          "Signature was correct length yet didn't have a 32-byte scalar")
+        )
       }
     )
   }

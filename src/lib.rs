@@ -48,8 +48,8 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
                            // Likely not worth ever changing due to the security effects of doing so
     key[31] &= (!0) >> to_clear;
 
-    let full_commitments_a = EngineA::generate_commitments(rng, key, bits).unwrap();
-    let full_commitments_b = EngineB::generate_commitments(rng, key, bits).unwrap();
+    let full_commitments_a = EngineA::generate_commitments(rng, key, bits);
+    let full_commitments_b = EngineB::generate_commitments(rng, key, bits);
     assert_eq!(full_commitments_a.len(), bits);
     assert_eq!(full_commitments_b.len(), bits);
     let mut base_commitments = Vec::new();
@@ -62,20 +62,20 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         std::mem::swap(&mut real_comm, &mut fake_comm);
       }
       debug_assert_eq!(
-        hex::encode(EngineA::public_key_to_bytes(&EngineA::blinding_key_to_public(&comm_a.blinding_key).unwrap())),
-        hex::encode(EngineA::public_key_to_bytes(real_comm.0))
+        EngineA::public_key_to_bytes(&EngineA::blinding_key_to_public(&comm_a.blinding_key)),
+        EngineA::public_key_to_bytes(real_comm.0)
       );
       debug_assert_eq!(
-        hex::encode(EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&comm_b.blinding_key).unwrap())),
-        hex::encode(EngineB::public_key_to_bytes(real_comm.1))
+        EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&comm_b.blinding_key)),
+        EngineB::public_key_to_bytes(real_comm.1)
       );
       let future_nonce_a = EngineA::new_private_key(rng);
       let future_nonce_b = EngineB::new_private_key(rng);
       let cheating_challenge: [u8; 32] = Sha256::new()
         .chain(EngineA::public_key_to_bytes(&comm_a.commitment))
         .chain(EngineB::public_key_to_bytes(&comm_b.commitment))
-        .chain(EngineA::public_key_to_bytes(&EngineA::blinding_key_to_public(&future_nonce_a).unwrap()))
-        .chain(EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&future_nonce_b).unwrap()))
+        .chain(EngineA::public_key_to_bytes(&EngineA::blinding_key_to_public(&future_nonce_a)))
+        .chain(EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&future_nonce_b)))
         .finalize()
         .into();
       let cheating_s_a = EngineA::new_private_key(rng);
@@ -87,19 +87,19 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         .chain(EngineB::public_key_to_bytes(&EngineB::compute_signature_R(&cheating_s_b, cheating_challenge, fake_comm.1).unwrap()))
         .finalize()
         .into();
-      let real_s_a = EngineA::compute_signature_s(&future_nonce_a, real_challenge, &comm_a.blinding_key).unwrap();
-      let real_s_b = EngineB::compute_signature_s(&future_nonce_b, real_challenge, &comm_b.blinding_key).unwrap();
+      let real_s_a = EngineA::compute_signature_s(&future_nonce_a, real_challenge, &comm_a.blinding_key);
+      let real_s_b = EngineB::compute_signature_s(&future_nonce_b, real_challenge, &comm_b.blinding_key);
       if bit_set {
         first_challenges.push(cheating_challenge);
         s_values.push([
           (real_s_a, real_s_b),
-          (cheating_s_a, cheating_s_b),
+          (cheating_s_a, cheating_s_b)
         ]);
       } else {
         first_challenges.push(real_challenge);
         s_values.push([
           (cheating_s_a, cheating_s_b),
-          (real_s_a, real_s_b),
+          (real_s_a, real_s_b)
         ]);
       }
       base_commitments.push((comm_a.commitment, comm_b.commitment));
@@ -118,7 +118,7 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         signatures: (sig_a, sig_b),
       },
       key_a,
-      key_b,
+      key_b
     )
   }
 
@@ -185,7 +185,7 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         (
           EngineA::little_endian_bytes_to_private_key(proof[cursor + 64 .. cursor + 96].try_into().unwrap())?,
           EngineB::little_endian_bytes_to_private_key(proof[cursor + 96 .. cursor + 128].try_into().unwrap())?
-        ),
+        )
       ]);
       cursor += 128;
     }

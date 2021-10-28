@@ -78,7 +78,7 @@ impl DLEqEngine for Secp256k1Engine {
     Point::from_bytes(key.try_into()?).ok_or(anyhow::anyhow!("Invalid point"))
   }
 
-  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> Vec<Commitment<Self>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
@@ -113,20 +113,22 @@ impl DLEqEngine for Secp256k1Engine {
     }
 
     debug_assert!(blinding_key_total.is_zero());
-    let decoded_key = Self::little_endian_bytes_to_private_key(key)?;
+    let decoded_key = Self::little_endian_bytes_to_private_key(key).expect(
+      "Generating commitments for an invalid secp256k1 key"
+    );
     let pubkey = g!(decoded_key * G).mark::<Normal>();
     debug_assert_eq!(
-      &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
+      &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment)).expect("Reconstructed our own key to 0"),
       &pubkey
     );
     debug!("Generated DL Eq proof for secp256k1 pubkey {}", hex::encode(pubkey.to_bytes()));
 
-    Ok(commitments)
+    commitments
   }
 
-  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> Self::PrivateKey {
     let challenge = Scalar::from_bytes_mod_order(challenge);
-    Ok(s!(nonce + challenge * key).mark::<NonZero>().ok_or(anyhow::anyhow!("Generated zero s value"))?)
+    s!(nonce + challenge * key).mark::<NonZero>().expect("Generated zero s value")
   }
 
   fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
@@ -154,8 +156,8 @@ impl DLEqEngine for Secp256k1Engine {
     res.mark::<Normal>().mark::<NonZero>().ok_or(anyhow::anyhow!("Reconstructed zero key"))
   }
 
-  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
-    Ok(g!(key * ALT_BASEPOINT).mark::<Normal>())
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> Self::PublicKey {
+    g!(key * ALT_BASEPOINT).mark::<Normal>()
   }
 
   // Uses Schnorr instead of ECDSA for compatibility with k256 which goes through ff/group which uses Schnorr

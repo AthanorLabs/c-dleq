@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 lazy_static = "1"
 hex-literal = "0.3"
-hex = "0.4"
 
 digest = "0.9"
 sha2 = "0.9"
@@ -31,6 +30,9 @@ secp256kfun = { version = "0.6", features = ["std"], default-features = false, o
 
 # TODO: Potentially remove the below
 log = "0.4.8"
+
+# Dev dependency once log is removed
+hex = "0.4"
 
 # TODO: Remove the below
 anyhow = "1"

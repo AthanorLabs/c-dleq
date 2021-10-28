@@ -51,13 +51,16 @@ pub trait DLEqEngine: Sized {
   fn public_key_to_bytes(key: &Self::PublicKey) -> Vec<u8>;
   fn bytes_to_public_key(key: &[u8]) -> anyhow::Result<Self::PublicKey>;
 
-  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>>;
-  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey>;
+  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> Vec<Commitment<Self>>;
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> Self::PrivateKey;
+  // Forced to be Results by the secp256kfun backend which forces a NonZero check which can fail based on counterparty supplied data
   #[allow(non_snake_case)]
   fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey>;
   fn commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey>;
+  // This returning a Result also provides an opportunity to check for torsion,
+  // yet the deserializers should prevent that in the first place
   fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey>;
-  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey>;
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> Self::PublicKey;
 
   fn sign(secret_key: &Self::PrivateKey, message: &[u8]) -> Self::Signature;
   fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()>;

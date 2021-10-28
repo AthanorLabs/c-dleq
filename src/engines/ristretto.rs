@@ -64,7 +64,7 @@ impl DLEqEngine for RistrettoEngine {
     Ok(CompressedRistretto::from_slice(key).decompress().ok_or(anyhow::anyhow!("Invalid point"))?)
   }
 
-  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> anyhow::Result<Vec<Commitment<Self>>> {
+  fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> Vec<Commitment<Self>> {
     let mut commitments = Vec::new();
     let mut blinding_key_total = Scalar::zero();
     let mut power_of_two = Scalar::one();
@@ -93,20 +93,20 @@ impl DLEqEngine for RistrettoEngine {
     }
 
     debug_assert_eq!(blinding_key_total, Scalar::zero());
-    let pubkey = &Scalar::from_canonical_bytes(key).ok_or(
-      anyhow::anyhow!("Generating commitments for too large scalar")
-    )? * &RISTRETTO_BASEPOINT_TABLE;
+    let pubkey = &Scalar::from_canonical_bytes(key).expect(
+      "Generating commitments for an invalid Ristretto key"
+    ) * &RISTRETTO_BASEPOINT_TABLE;
     debug_assert_eq!(
-      &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment))?,
+      &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment)).expect("Reconstructed our key to invalid despite none being"),
       &pubkey
     );
     debug!("Generated DL Eq proof for Ristretto pubkey {}", hex::encode(pubkey.compress().as_bytes()));
 
-    Ok(commitments)
+    commitments
   }
 
-  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> anyhow::Result<Self::PrivateKey> {
-    Ok(nonce + Scalar::from_bytes_mod_order(challenge) * key)
+  fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> Self::PrivateKey {
+    nonce + Scalar::from_bytes_mod_order(challenge) * key
   }
 
   fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
@@ -128,8 +128,8 @@ impl DLEqEngine for RistrettoEngine {
     Ok(res)
   }
 
-  fn blinding_key_to_public(key: &Self::PrivateKey) -> anyhow::Result<Self::PublicKey> {
-    Ok(key * *ALT_BASEPOINT)
+  fn blinding_key_to_public(key: &Self::PrivateKey) -> Self::PublicKey {
+    key * *ALT_BASEPOINT
   }
 
   fn sign(key: &Self::PrivateKey, message: &[u8]) -> Self::Signature {
@@ -151,7 +151,7 @@ impl DLEqEngine for RistrettoEngine {
     if RistrettoPoint::vartime_double_scalar_mul_basepoint(&c, &public_key, &signature.s) == signature.R {
       Ok(())
     } else {
-      Err(anyhow::anyhow!("Bad signature"))
+      anyhow::bail!("Bad signature");
     }
   }
 
@@ -176,7 +176,9 @@ impl DLEqEngine for RistrettoEngine {
     Ok(
       Self::Signature {
         R: Self::bytes_to_public_key(&sig[..32])?,
-        s: Self::little_endian_bytes_to_private_key(sig[32..].try_into().expect("Signature was correct length yet didn't have a 32-byte scalar"))?
+        s: Self::little_endian_bytes_to_private_key(sig[32..].try_into().expect(
+          "Signature was correct length yet didn't have a 32-byte scalar")
+        )?
       }
     )
   }
