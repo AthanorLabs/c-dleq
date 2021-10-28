@@ -17,7 +17,10 @@ use crate::common::{generate_key, test_signature};
 #[test]
 fn jubjub_scalar_bits() {
   let key = generate_key(JubjubEngine::scalar_bits());
-  assert_eq!(JubjubEngine::little_endian_bytes_to_private_key(key).unwrap().to_repr(), key);
+  assert_eq!(
+    hex::encode(JubjubEngine::little_endian_bytes_to_private_key(key).unwrap().to_repr()),
+    hex::encode(key)
+  );
 }
 
 // Independently generated like Ed25519's

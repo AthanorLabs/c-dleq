@@ -11,6 +11,8 @@ use sha2::Sha256;
 use ff::PrimeField;
 use group::{GroupOps, GroupOpsOwned, ScalarMul, ScalarMulOwned, prime::PrimeGroup};
 
+use log::debug;
+
 use crate::engines::{Commitment, BasepointProvider, DLEqEngine};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -141,10 +143,12 @@ impl<
     }
 
     debug_assert_eq!(blinding_key_total, F::zero());
+    let pubkey = B::basepoint() * C::little_endian_bytes_to_scalar(key).expect("Generating commitments for invalid scalar");
     debug_assert_eq!(
       Self::reconstruct_key(commitments.iter().map(|c| &c.commitment)).expect("Reconstructed our key to invalid despite none being"),
-      B::basepoint() * C::little_endian_bytes_to_scalar(key).expect("Generating commitments for invalid scalar")
+      pubkey
     );
+    debug!("Generated DL Eq proof for ff/group (unknown) pubkey {}", hex::encode(C::point_to_bytes(&pubkey)));
 
     commitments
   }

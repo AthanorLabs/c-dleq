@@ -62,12 +62,12 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         std::mem::swap(&mut real_comm, &mut fake_comm);
       }
       debug_assert_eq!(
-        EngineA::public_key_to_bytes(&EngineA::blinding_key_to_public(&comm_a.blinding_key)),
-        EngineA::public_key_to_bytes(real_comm.0)
+        hex::encode(EngineA::public_key_to_bytes(&EngineA::blinding_key_to_public(&comm_a.blinding_key))),
+        hex::encode(EngineA::public_key_to_bytes(real_comm.0))
       );
       debug_assert_eq!(
-        EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&comm_b.blinding_key)),
-        EngineB::public_key_to_bytes(real_comm.1)
+        hex::encode(EngineB::public_key_to_bytes(&EngineB::blinding_key_to_public(&comm_b.blinding_key))),
+        hex::encode(EngineB::public_key_to_bytes(real_comm.1))
       );
       let future_nonce_a = EngineA::new_private_key(rng);
       let future_nonce_b = EngineB::new_private_key(rng);

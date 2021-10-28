@@ -20,16 +20,28 @@ fn test_with<EngineA: DLEqEngine, EngineB: DLEqEngine>() {
   #[cfg(feature = "serialize")]
   let proof = DLEqProof::<EngineA, EngineB>::deserialize(&proof.serialize().unwrap()).unwrap();
   let (pkey_a, pkey_b) = proof.verify().expect("DL Eq proof verification failed");
-  assert_eq!(hex::encode(EngineA::public_key_to_bytes(&pkey_a)), hex::encode(EngineA::public_key_to_bytes(&EngineA::to_public_key(&skey_a))));
-  assert_eq!(hex::encode(EngineB::public_key_to_bytes(&pkey_b)), hex::encode(EngineB::public_key_to_bytes(&EngineB::to_public_key(&skey_b))));
+  assert_eq!(
+    hex::encode(EngineA::public_key_to_bytes(&pkey_a)),
+    hex::encode(EngineA::public_key_to_bytes(&EngineA::to_public_key(&skey_a)))
+  );
+  assert_eq!(
+    hex::encode(EngineB::public_key_to_bytes(&pkey_b)),
+    hex::encode(EngineB::public_key_to_bytes(&EngineB::to_public_key(&skey_b)))
+  );
 
   // Test the inverse arrangement for further certainty
   let (proof, skey_b, skey_a) = DLEqProof::<EngineB, EngineA>::new(&mut thread_rng());
   #[cfg(feature = "serialize")]
   let proof = DLEqProof::<EngineB, EngineA>::deserialize(&proof.serialize().unwrap()).unwrap();
   let (pkey_b, pkey_a) = proof.verify().expect("DL Eq proof verification failed");
-  assert_eq!(hex::encode(EngineA::public_key_to_bytes(&pkey_a)), hex::encode(EngineA::public_key_to_bytes(&EngineA::to_public_key(&skey_a))));
-  assert_eq!(hex::encode(EngineB::public_key_to_bytes(&pkey_b)), hex::encode(EngineB::public_key_to_bytes(&EngineB::to_public_key(&skey_b))));
+  assert_eq!(
+    hex::encode(EngineA::public_key_to_bytes(&pkey_a)),
+    hex::encode(EngineA::public_key_to_bytes(&EngineA::to_public_key(&skey_a)))
+  );
+  assert_eq!(
+    hex::encode(EngineB::public_key_to_bytes(&pkey_b)),
+    hex::encode(EngineB::public_key_to_bytes(&EngineB::to_public_key(&skey_b)))
+  );
 }
 
 // TODO: Have a macro generate all of these
@@ -146,12 +158,12 @@ fn k256_secp256kfun_interchangability() {
   let proof = DLEqProof::<secp256kfun::Secp256k1Engine, k256::Secp256k1Engine>::deserialize(&proof.serialize().unwrap()).unwrap();
   let (pkey_a, pkey_b) = proof.verify().expect("DL Eq proof verification failed");
   assert_eq!(
-    secp256kfun::Secp256k1Engine::public_key_to_bytes(&pkey_a),
-    k256::Secp256k1Engine::public_key_to_bytes(&k256::Secp256k1Engine::to_public_key(&skey_a))
+    hex::encode(secp256kfun::Secp256k1Engine::public_key_to_bytes(&pkey_a)),
+    hex::encode(k256::Secp256k1Engine::public_key_to_bytes(&k256::Secp256k1Engine::to_public_key(&skey_a)))
   );
   assert_eq!(
-    k256::Secp256k1Engine::public_key_to_bytes(&pkey_b),
-    secp256kfun::Secp256k1Engine::public_key_to_bytes(&secp256kfun::Secp256k1Engine::to_public_key(&skey_b))
+    hex::encode(k256::Secp256k1Engine::public_key_to_bytes(&pkey_b)),
+    hex::encode(secp256kfun::Secp256k1Engine::public_key_to_bytes(&secp256kfun::Secp256k1Engine::to_public_key(&skey_b)))
   );
 }
 

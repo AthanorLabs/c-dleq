@@ -23,13 +23,19 @@ use crate::common::{generate_key, test_signature};
 #[test]
 fn ed25519_scalar_bits() {
   let key = generate_key(Ed25519Engine::scalar_bits());
-  assert_eq!(Ed25519Engine::little_endian_bytes_to_private_key(key).unwrap().as_bytes(), &key);
+  assert_eq!(
+    hex::encode(Ed25519Engine::little_endian_bytes_to_private_key(key).unwrap().as_bytes()),
+    hex::encode(&key)
+  );
 }
 
 #[test]
 fn ristretto_scalar_bits() {
   let key = generate_key(RistrettoEngine::scalar_bits());
-  assert_eq!(RistrettoEngine::little_endian_bytes_to_private_key(key).unwrap().as_bytes(), &key);
+  assert_eq!(
+    hex::encode(RistrettoEngine::little_endian_bytes_to_private_key(key).unwrap().as_bytes()),
+    hex::encode(&key)
+  );
 }
 
 // Tests methodology and provides an exact way to replicate

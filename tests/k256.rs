@@ -16,7 +16,10 @@ fn secp256k1_scalar_bits() {
   let key = generate_key(Secp256k1Engine::scalar_bits());
   let mut key_rev = key;
   key_rev.reverse();
-  assert_eq!(Secp256k1Engine::little_endian_bytes_to_private_key(key).unwrap().to_bytes().as_slice(), &key_rev);
+  assert_eq!(
+    hex::encode(Secp256k1Engine::little_endian_bytes_to_private_key(key).unwrap().to_bytes().as_slice()),
+    hex::encode(&key_rev)
+  );
 }
 
 // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97

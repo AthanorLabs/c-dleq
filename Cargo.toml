@@ -28,11 +28,9 @@ jubjub = { version = "0.7", optional = true }
 
 secp256kfun = { version = "0.6", features = ["std"], default-features = false, optional = true }
 
-# TODO: Potentially remove the below
-log = "0.4.8"
-
-# Dev dependency once log is removed
+# Only used in log statements
 hex = "0.4"
+log = "0.4.8"
 
 # TODO: Remove the below
 anyhow = "1"

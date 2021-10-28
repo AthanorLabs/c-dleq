@@ -16,7 +16,10 @@ fn p256_scalar_bits() {
   let key = generate_key(P256Engine::scalar_bits());
   let mut key_rev = key;
   key_rev.reverse();
-  assert_eq!(P256Engine::little_endian_bytes_to_private_key(key).unwrap().to_bytes().as_slice(), &key_rev);
+  assert_eq!(
+    hex::encode(P256Engine::little_endian_bytes_to_private_key(key).unwrap().to_bytes().as_slice()),
+    hex::encode(&key_rev)
+  );
 }
 
 // Independently derived like secp256k1's
