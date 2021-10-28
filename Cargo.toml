@@ -3,7 +3,7 @@ name = "dleq"
 version = "0.0.0"
 description = "Implementation of a Discrete Log Equality proof supporting a variety of curves"
 license = "MIT"
-authors = ["Luke Parker <lukeparker5132@gmail.com>", "Lee Bousfield <ljbousfield@gmail.com>"]
+authors = ["Luke Parker <lukeparker5132@gmail.com>"]
 edition = "2018"
 
 [dependencies]
