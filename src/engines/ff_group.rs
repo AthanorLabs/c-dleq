@@ -58,6 +58,10 @@ impl<
   type PublicKey = G;
   type Signature = Signature<F, G>;
 
+  fn alt_basepoint() -> Self::PublicKey {
+    B::alt_basepoint()
+  }
+
   fn scalar_bits() -> usize {
     // This commented algorithm works for Field
     // PrimeField offers F::CAPACITY, which should be used, yet this may have value if we ever relax that requirement

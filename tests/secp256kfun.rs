@@ -7,7 +7,7 @@ use sha2::Sha256;
 
 use secp256kfun;
 
-use dleq::engines::{DLEqEngine, secp256kfun::{ALT_BASEPOINT, Secp256k1Engine}};
+use dleq::engines::{DLEqEngine, secp256kfun::Secp256k1Engine};
 
 mod common;
 use crate::common::{generate_key, test_signature};
@@ -30,7 +30,7 @@ fn alt_secp256k1() {
   alt.extend(&Sha256::new().chain(secp256kfun::G.to_bytes_uncompressed()).finalize());
   assert_eq!(
     secp256kfun::Point::from_bytes(alt.as_slice().try_into().unwrap()).unwrap(),
-    *ALT_BASEPOINT
+    Secp256k1Engine::alt_basepoint()
   );
 }
 

@@ -1,5 +1,3 @@
-// TODO: Rename to k256 in order for the planned secp256kfun to also be noted
-
 use hex_literal::hex;
 
 use k256::{

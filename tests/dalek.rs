@@ -7,14 +7,10 @@ use blake2::Blake2b;
 use curve25519_dalek::{
   constants::{ED25519_BASEPOINT_POINT, RISTRETTO_BASEPOINT_POINT},
   edwards::CompressedEdwardsY,
-  ristretto::{RistrettoPoint}
+  ristretto::RistrettoPoint
 };
 
-use dleq::engines::{
-  DLEqEngine,
-  ed25519::{self, Ed25519Engine},
-  ristretto::{self, RistrettoEngine}
-};
+use dleq::engines::{DLEqEngine, ed25519::Ed25519Engine, ristretto::RistrettoEngine};
 
 mod common;
 use crate::common::{generate_key, test_signature};
@@ -49,7 +45,7 @@ fn alt_ed25519() {
   keccak.finalize(&mut hash_G);
   assert_eq!(
     CompressedEdwardsY::from_slice(&hash_G).decompress().unwrap().mul_by_cofactor(),
-    *ed25519::ALT_BASEPOINT
+    Ed25519Engine::alt_basepoint()
   );
 }
 
@@ -58,7 +54,7 @@ fn alt_ed25519() {
 fn alt_ristretto() {
   assert_eq!(
     RistrettoPoint::from_hash(Blake2b::new().chain(RISTRETTO_BASEPOINT_POINT.compress().as_bytes())),
-    *ristretto::ALT_BASEPOINT
+    RistrettoEngine::alt_basepoint()
   );
 }
 

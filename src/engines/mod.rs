@@ -43,6 +43,12 @@ pub trait DLEqEngine: Sized {
   type PublicKey: PartialEq + Clone + Sized + Send + Sync + 'static;
   type Signature: PartialEq + Clone + Sized + Send + Sync + 'static;
 
+  // API is only used by the tests in this repo at the time BUT it does allow apps which need an
+  // alt basepoint to hook into this lib for them, or simply just note which alt basepoint was used
+  // In the future, also offering a basepoint method may be beneficial. While that seems pointless,
+  // there is a known app which uses a non-standard basepoint, and uses the actual basepoint as the alt
+  fn alt_basepoint() -> Self::PublicKey;
+
   fn scalar_bits() -> usize;
 
   fn new_private_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::PrivateKey;

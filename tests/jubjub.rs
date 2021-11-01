@@ -9,7 +9,7 @@ use ff::PrimeField;
 use group::{Group, GroupEncoding};
 use jubjub::SubgroupPoint;
 
-use dleq::engines::{BasepointProvider, DLEqEngine, jubjub::{JubjubBasepoints, JubjubEngine}};
+use dleq::engines::{DLEqEngine, jubjub::JubjubEngine};
 
 mod common;
 use crate::common::{generate_key, test_signature};
@@ -31,7 +31,7 @@ fn alt_jubjub() {
     SubgroupPoint::from_bytes(
       Blake2b::digest(&SubgroupPoint::generator().to_bytes())[..32].try_into().unwrap()
     ).unwrap(),
-    JubjubBasepoints::alt_basepoint()
+    JubjubEngine::alt_basepoint()
   )
 }
 

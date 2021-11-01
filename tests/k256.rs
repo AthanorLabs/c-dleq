@@ -6,7 +6,7 @@ use sha2::{digest::generic_array::GenericArray, Sha256};
 use group::GroupEncoding;
 use k256::{elliptic_curve::sec1::ToEncodedPoint, ProjectivePoint};
 
-use dleq::engines::{BasepointProvider, DLEqEngine, k256::{Secp256k1Basepoints, Secp256k1Engine}};
+use dleq::engines::{DLEqEngine, k256::Secp256k1Engine};
 
 mod common;
 use crate::common::{generate_key, test_signature};
@@ -29,7 +29,7 @@ fn alt_secp256k1() {
   alt.extend(Sha256::digest(ProjectivePoint::generator().to_encoded_point(false).as_bytes()).as_slice().to_vec());
   assert_eq!(
     ProjectivePoint::from_bytes(GenericArray::from_slice(&alt)).unwrap(),
-    Secp256k1Basepoints::alt_basepoint()
+    Secp256k1Engine::alt_basepoint()
   );
 }
 

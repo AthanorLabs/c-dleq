@@ -18,7 +18,7 @@ use log::debug;
 use crate::{DLEqError, DLEqResult, engines::{DLEqEngine, Commitment}};
 
 lazy_static! {
-  pub static ref ALT_BASEPOINT: RistrettoPoint = {
+  static ref ALT_BASEPOINT: RistrettoPoint = {
     CompressedRistretto(hex!("c6d77f893b5a01a5e995be5a568e55bb22f3931ee686f24e5d211bee967ec66d")).decompress().unwrap()
   };
 }
@@ -35,6 +35,10 @@ impl DLEqEngine for RistrettoEngine {
   type PrivateKey = Scalar;
   type PublicKey = RistrettoPoint;
   type Signature = Signature;
+
+  fn alt_basepoint() -> Self::PublicKey {
+    *ALT_BASEPOINT
+  }
 
   fn scalar_bits() -> usize {
      252

@@ -19,9 +19,7 @@ use crate::{DLEqError, DLEqResult, engines::{DLEqEngine, Commitment}};
 
 lazy_static! {
   // Taken from Monero: https://github.com/monero-project/monero/blob/9414194b1e47730843e4dbbd4214bf72d3540cf9/src/ringct/rctTypes.h#L454
-  // TODO: Should this be available via DLEqEngine?
-  // It's only pub as-is for the tests.
-  pub static ref ALT_BASEPOINT: EdwardsPoint = {
+  static ref ALT_BASEPOINT: EdwardsPoint = {
     CompressedEdwardsY(hex!("8b655970153799af2aeadc9ff1add0ea6c7251d54154cfa92c173a0dd39c1f94")).decompress().unwrap()
   };
 }
@@ -38,6 +36,10 @@ impl DLEqEngine for Ed25519Engine {
   type PrivateKey = Scalar;
   type PublicKey = EdwardsPoint;
   type Signature = Signature;
+
+  fn alt_basepoint() -> Self::PublicKey {
+    *ALT_BASEPOINT
+  }
 
   fn scalar_bits() -> usize {
     252

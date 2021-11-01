@@ -15,7 +15,7 @@ use crate::{DLEqError, DLEqResult, engines::{DLEqEngine, Commitment}};
 
 lazy_static! {
   // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97
-  pub static ref ALT_BASEPOINT: Point = {
+  static ref ALT_BASEPOINT: Point = {
     Point::from_bytes(hex!("0250929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"))
       .expect("Alternate basepoint is invalid")
   };
@@ -48,6 +48,10 @@ impl DLEqEngine for Secp256k1Engine {
   type PrivateKey = Scalar;
   type PublicKey = Point;
   type Signature = Signature;
+
+  fn alt_basepoint() -> Self::PublicKey {
+    *ALT_BASEPOINT
+  }
 
   fn scalar_bits() -> usize {
      255
