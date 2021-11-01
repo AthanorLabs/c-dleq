@@ -15,7 +15,7 @@ use curve25519_dalek::{
 
 use log::debug;
 
-use crate::engines::{DLEqEngine, Commitment};
+use crate::{DLEqError, DLEqResult, engines::{DLEqEngine, Commitment}};
 
 lazy_static! {
   // Taken from Monero: https://github.com/monero-project/monero/blob/9414194b1e47730843e4dbbd4214bf72d3540cf9/src/ringct/rctTypes.h#L454
@@ -51,8 +51,8 @@ impl DLEqEngine for Ed25519Engine {
     key * &ED25519_BASEPOINT_TABLE
   }
 
-  fn little_endian_bytes_to_private_key(bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey> {
-    Scalar::from_canonical_bytes(bytes).ok_or(anyhow::anyhow!("Invalid scalar"))
+  fn little_endian_bytes_to_private_key(bytes: [u8; 32]) -> DLEqResult<Self::PrivateKey> {
+    Scalar::from_canonical_bytes(bytes).ok_or(DLEqError::InvalidScalar)
   }
 
   fn private_key_to_little_endian_bytes(key: &Self::PrivateKey) -> [u8; 32] {
@@ -63,12 +63,13 @@ impl DLEqEngine for Ed25519Engine {
     key.compress().to_bytes().to_vec()
   }
 
-  fn bytes_to_public_key(key: &[u8]) -> anyhow::Result<Self::PublicKey> {
-    let res = CompressedEdwardsY::from_slice(key).decompress().ok_or(anyhow::anyhow!("Invalid point"))?;
+  fn bytes_to_public_key(key: &[u8]) -> DLEqResult<Self::PublicKey> {
+    let res = CompressedEdwardsY::from_slice(key).decompress().ok_or(DLEqError::InvalidPoint)?;
     if !res.is_torsion_free() {
-      anyhow::bail!("Point has torsion");
+      Err(DLEqError::InvalidPoint)
+    } else {
+      Ok(res)
     }
-    Ok(res)
   }
 
   fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> Vec<Commitment<Self>> {
@@ -116,15 +117,15 @@ impl DLEqEngine for Ed25519Engine {
     nonce + Scalar::from_bytes_mod_order(challenge) * key
   }
 
-  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> DLEqResult<Self::PublicKey> {
     Ok(s_value * *ALT_BASEPOINT - Scalar::from_bytes_mod_order(challenge) * key)
   }
 
-  fn commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn commitment_sub_one(commitment: &Self::PublicKey) -> DLEqResult<Self::PublicKey> {
     Ok(commitment - ED25519_BASEPOINT_POINT)
   }
 
-  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
+  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> DLEqResult<Self::PublicKey> {
     let mut power_of_two = Scalar::one();
     let mut res = EdwardsPoint::identity();
     let two = Scalar::from(2u8);
@@ -160,7 +161,7 @@ impl DLEqEngine for Ed25519Engine {
   }
 
   #[allow(non_snake_case)]
-  fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()> {
+  fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> DLEqResult<()> {
     let c = Scalar::from_hash(
       sha2::Sha512::new()
         .chain(signature.R.compress().as_bytes())
@@ -170,7 +171,7 @@ impl DLEqEngine for Ed25519Engine {
     if EdwardsPoint::vartime_double_scalar_mul_basepoint(&-c, &public_key, &signature.s) == signature.R {
       Ok(())
     } else {
-      anyhow::bail!("Bad signature");
+      Err(DLEqError::InvalidSignature)
     }
   }
 
@@ -188,17 +189,18 @@ impl DLEqEngine for Ed25519Engine {
     res
   }
 
-  fn bytes_to_signature(sig: &[u8]) -> anyhow::Result<Self::Signature> {
+  fn bytes_to_signature(sig: &[u8]) -> DLEqResult<Self::Signature> {
     if sig.len() != 64 {
-      anyhow::bail!("Invalid signature length");
+      Err(DLEqError::InvalidSignature)
+    } else {
+      Ok(
+        Self::Signature {
+          R: Self::bytes_to_public_key(&sig[..32]).map_err(|_| DLEqError::InvalidSignature)?,
+          s: Self::little_endian_bytes_to_private_key(sig[32..].try_into().expect(
+            "Signature was correct length yet didn't have a 32-byte scalar"
+          )).map_err(|_| DLEqError::InvalidSignature)?
+        }
+      )
     }
-    Ok(
-      Self::Signature {
-        R: Self::bytes_to_public_key(&sig[..32])?,
-        s: Self::little_endian_bytes_to_private_key(sig[32..].try_into().expect(
-          "Signature was correct length yet didn't have a 32-byte scalar"
-        ))?
-      }
-    )
   }
 }

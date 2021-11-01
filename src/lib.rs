@@ -5,12 +5,30 @@ use std::io::{self, Write};
 use rand_core::{RngCore, CryptoRng};
 use sha2::{Sha256, digest::Digest};
 
-use log::trace;
+use thiserror::Error;
 
-use anyhow::Context;
+use log::trace;
 
 pub mod engines;
 use crate::engines::DLEqEngine;
+
+#[derive(Error, Debug)]
+pub enum DLEqError {
+  #[error("Deserialized invalid scalar")]
+  InvalidScalar,
+  #[error("Deserialized invalid point")]
+  InvalidPoint,
+  #[error("Deserialized/verified invalid signature")]
+  InvalidSignature,
+  // Distinct as users are expected to read from a network connection themselves and therefore
+  // could have a valid, yet misread, proof. This would help them debug
+  #[error("Deserializing a proof with an invalid length")]
+  InvalidProofLength,
+  #[error("Invalid proof")]
+  InvalidProof
+}
+
+pub type DLEqResult<T> = Result<T, DLEqError>;
 
 pub struct DLEqProof<EngineA: DLEqEngine, EngineB: DLEqEngine> {
   base_commitments: Vec<(EngineA::PublicKey, EngineB::PublicKey)>,
@@ -146,9 +164,9 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
 
   // This was also attempted with io::Read and it did not go well
   #[cfg(feature = "serialize")]
-  pub fn deserialize(proof: &[u8]) -> anyhow::Result<Self> {
+  pub fn deserialize(proof: &[u8]) -> DLEqResult<Self> {
     if proof.len() != proof_size::<EngineA, EngineB>() {
-      anyhow::bail!("Invalid proof size");
+      return Err(DLEqError::InvalidProofLength);
     }
 
     let mut cursor = 0;
@@ -200,13 +218,17 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
     })
   }
 
-  pub fn verify(&self) -> anyhow::Result<(EngineA::PublicKey, EngineB::PublicKey)> {
+  pub fn verify(&self) -> DLEqResult<(EngineA::PublicKey, EngineB::PublicKey)> {
     let bits = min(EngineA::scalar_bits(), EngineB::scalar_bits());
     if (self.base_commitments.len() != bits) ||
       (self.first_challenges.len() != bits) ||
       (self.s_values.len() != bits)
     {
-      anyhow::bail!("Discrete logarithm proof has wrong size");
+      // Reuse the above error, which is named well enough
+      // Only at risk of happening with a custom deserializer
+      // If we didn't allow custom deserializers by making the fields private,
+      // this could be made into a panic/removed
+      return Err(DLEqError::InvalidProofLength);
     }
 
     for i in 0 .. bits {
@@ -230,16 +252,16 @@ impl<EngineA: DLEqEngine, EngineB: DLEqEngine> DLEqProof<EngineA, EngineB> {
         .finalize()
         .into();
       if first_challenge != check_first_challenge {
-        anyhow::bail!("Bad DL Eq proof! Regenerated challenge didn't match expected");
+        return Err(DLEqError::InvalidProof);
       }
     }
 
     let key_a = EngineA::reconstruct_key(self.base_commitments.iter().map(|c| &c.0))?;
     EngineA::verify_signature(&key_a, &EngineA::public_key_to_bytes(&key_a), &self.signatures.0)
-      .context("Error verifying signature for DL Eq public key A")?;
+      .map_err(|_| DLEqError::InvalidProof)?;
     let key_b = EngineB::reconstruct_key(self.base_commitments.iter().map(|c| &c.1))?;
     EngineB::verify_signature(&key_b, &EngineB::public_key_to_bytes(&key_b), &self.signatures.1)
-      .context("Error verifying signature for DL Eq public key B")?;
+      .map_err(|_| DLEqError::InvalidProof)?;
 
     trace!(
       "Verified DL Eq proof for keys {} and {}",

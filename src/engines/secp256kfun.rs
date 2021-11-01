@@ -11,7 +11,7 @@ use log::debug;
 
 use secp256kfun::{marker::*, Scalar, Point, G, g, s};
 
-use crate::engines::{DLEqEngine, Commitment};
+use crate::{DLEqError, DLEqResult, engines::{DLEqEngine, Commitment}};
 
 lazy_static! {
   // Taken from Grin: https://github.com/mimblewimble/rust-secp256k1-zkp/blob/ed4297b0e3dba9b0793aab340c7c81cda6460bcf/src/constants.rs#L97
@@ -41,6 +41,8 @@ pub struct Signature {
 // This would be an issue if they ever conflicted but apps SHOULD only use one
 // Some projects will appreciate secp256kfun's features and syntax
 // Some projects will go for the more traditional k256
+// This is immediately usable against apps which do use k256 and they perform identically
+// EXCEPT this will reject 0 points and therefore DL Eq proofs for the 0 scalar
 pub struct Secp256k1Engine;
 impl DLEqEngine for Secp256k1Engine {
   type PrivateKey = Scalar;
@@ -59,9 +61,9 @@ impl DLEqEngine for Secp256k1Engine {
     g!(key * G).mark::<Normal>()
   }
 
-  fn little_endian_bytes_to_private_key(mut bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey> {
+  fn little_endian_bytes_to_private_key(mut bytes: [u8; 32]) -> DLEqResult<Self::PrivateKey> {
     bytes.reverse();
-    Scalar::from_bytes_mod_order(bytes).mark::<NonZero>().ok_or(anyhow::anyhow!("Private key is 0"))
+    Scalar::from_bytes_mod_order(bytes).mark::<NonZero>().ok_or(DLEqError::InvalidScalar)
   }
 
   fn private_key_to_little_endian_bytes(key: &Self::PrivateKey) -> [u8; 32] {
@@ -74,8 +76,8 @@ impl DLEqEngine for Secp256k1Engine {
     key.to_bytes().to_vec()
   }
 
-  fn bytes_to_public_key(key: &[u8]) -> anyhow::Result<Self::PublicKey> {
-    Point::from_bytes(key.try_into()?).ok_or(anyhow::anyhow!("Invalid point"))
+  fn bytes_to_public_key(key: &[u8]) -> DLEqResult<Self::PublicKey> {
+    Point::from_bytes(key.try_into().map_err(|_| DLEqError::InvalidPoint)?).ok_or(DLEqError::InvalidPoint)
   }
 
   fn generate_commitments<R: RngCore + CryptoRng>(rng: &mut R, key: [u8; 32], bits: usize) -> Vec<Commitment<Self>> {
@@ -118,6 +120,8 @@ impl DLEqEngine for Secp256k1Engine {
     );
     let pubkey = g!(decoded_key * G).mark::<Normal>();
     debug_assert_eq!(
+      // If this library is ever updated to offer an API accepting an arbitary key for the proof,
+      // this line must be removed OR this function must return a Result OR proof generation must check if a 0 key was passed
       &Self::reconstruct_key(commitments.iter().map(|c| &c.commitment)).expect("Reconstructed our own key to 0"),
       &pubkey
     );
@@ -128,24 +132,28 @@ impl DLEqEngine for Secp256k1Engine {
 
   fn compute_signature_s(nonce: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PrivateKey) -> Self::PrivateKey {
     let challenge = Scalar::from_bytes_mod_order(challenge);
-    s!(nonce + challenge * key).mark::<NonZero>().expect("Generated zero s value")
+    // Even if this library is updated to accept an arbitrary key for the proof, instead of generating one
+    // And even if the key in question was 0
+    // This would still be safe due to how the library randomly generates the nonce
+    s!(nonce + (challenge * key)).mark::<NonZero>().expect("Generated zero s value")
   }
 
-  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> DLEqResult<Self::PublicKey> {
     let challenge = Scalar::from_bytes_mod_order(challenge);
     Ok(
       g!(s_value * ALT_BASEPOINT - challenge * key)
         .mark::<Normal>()
         .mark::<NonZero>()
-        .ok_or(anyhow::anyhow!("Generated zero R value"))?
+        // Not the best error, but considering it's a 0 point...
+        .ok_or(DLEqError::InvalidPoint)?
     )
   }
 
-  fn commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
-    Ok(g!(commitment - G).mark::<Normal>().mark::<NonZero>().ok_or(anyhow::anyhow!("Generated zero commitment"))?)
+  fn commitment_sub_one(commitment: &Self::PublicKey) -> DLEqResult<Self::PublicKey> {
+    Ok(g!(commitment - G).mark::<Normal>().mark::<NonZero>().ok_or(DLEqError::InvalidPoint)?)
   }
 
-  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
+  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> DLEqResult<Self::PublicKey> {
     let mut power_of_two = Scalar::one();
     let mut res = Point::zero().mark::<Jacobian>();
     let two = Scalar::from(2);
@@ -153,7 +161,7 @@ impl DLEqEngine for Secp256k1Engine {
       res = g!(res + power_of_two * comm);
       power_of_two = s!(power_of_two * two).mark::<NonZero>().expect("Generated zero power of two");
     }
-    res.mark::<Normal>().mark::<NonZero>().ok_or(anyhow::anyhow!("Reconstructed zero key"))
+    res.mark::<Normal>().mark::<NonZero>().ok_or(DLEqError::InvalidPoint)
   }
 
   fn blinding_key_to_public(key: &Self::PrivateKey) -> Self::PublicKey {
@@ -177,18 +185,18 @@ impl DLEqEngine for Secp256k1Engine {
     Signature { R, s }
   }
 
-  fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()> {
+  fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> DLEqResult<()> {
     let mut to_hash = signature.R.to_bytes().to_vec();
     to_hash.extend(message);
     let c = Scalar::from_bytes_mod_order(Sha256::digest(&to_hash)[..32].try_into().unwrap()).mark::<Public>();
     #[allow(non_snake_case)]
     let expected_R = g!((signature.s * G) + (c * public_key))
       .mark::<NonZero>()
-      .ok_or(anyhow::anyhow!("Signature resulted in zero R value"))?;
+      .ok_or(DLEqError::InvalidPoint)?;
     if expected_R == signature.R {
       Ok(())
     } else {
-      anyhow::bail!("Bad signature");
+      Err(DLEqError::InvalidSignature)
     }
   }
 
@@ -206,19 +214,20 @@ impl DLEqEngine for Secp256k1Engine {
     res
   }
 
-  fn bytes_to_signature(sig: &[u8]) -> anyhow::Result<Self::Signature> {
+  fn bytes_to_signature(sig: &[u8]) -> DLEqResult<Self::Signature> {
     if sig.len() != Self::signature_len() {
-      anyhow::bail!("Invalid signature length");
+      Err(DLEqError::InvalidSignature)
+    } else {
+      Ok(
+        Self::Signature {
+          R: Point::from_bytes(
+            sig[..33].try_into().expect("Signature was correct length yet didn't have a 33-byte point")
+          ).ok_or(DLEqError::InvalidSignature)?,
+          s: Scalar::from_bytes_mod_order(
+            sig[33..].try_into().expect("Signature was correct length yet didn't have a 32-byte scalar")
+          ).mark::<Public>()
+        }
+      )
     }
-    Ok(
-      Self::Signature {
-        R: Point::from_bytes(
-          sig[..33].try_into().expect("Signature was correct length yet didn't have a 33-byte point")
-        ).ok_or(anyhow::anyhow!("Invalid point"))?,
-        s: Scalar::from_bytes_mod_order(
-          sig[33..].try_into().expect("Signature was correct length yet didn't have a 32-byte scalar")
-        ).mark::<Public>()
-      }
-    )
   }
 }

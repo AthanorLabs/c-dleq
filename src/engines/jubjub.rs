@@ -6,7 +6,7 @@ use ff::PrimeField;
 use group::{Group, GroupEncoding};
 use jubjub::{Fr, SubgroupPoint};
 
-use crate::engines::{BasepointProvider, ff_group::{FfGroupConversions, FfGroupEngine}};
+use crate::{DLEqError, DLEqResult, engines::{BasepointProvider, ff_group::{FfGroupConversions, FfGroupEngine}}};
 
 pub struct JubjubConversions;
 impl FfGroupConversions for JubjubConversions {
@@ -27,20 +27,21 @@ impl FfGroupConversions for JubjubConversions {
     Fr::from_bytes_wide(&wide)
   }
 
-  fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> anyhow::Result<Self::Scalar> {
-    Fr::from_repr(bytes).ok_or(anyhow::anyhow!("Invalid scalar"))
+  fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> DLEqResult<Self::Scalar> {
+    Fr::from_repr(bytes).ok_or(DLEqError::InvalidScalar)
   }
 
   fn point_to_bytes(point: &Self::Point) -> Vec<u8> {
      point.to_bytes().to_vec()
   }
 
-  fn bytes_to_point(bytes: &[u8]) -> anyhow::Result<Self::Point> {
-    let point = SubgroupPoint::from_bytes(bytes.try_into()?);
+  fn bytes_to_point(bytes: &[u8]) -> DLEqResult<Self::Point> {
+    let point = SubgroupPoint::from_bytes(bytes.try_into().map_err(|_| DLEqError::InvalidPoint)?);
     if point.is_none().into() {
-      anyhow::bail!("Invalid point");
+      Err(DLEqError::InvalidPoint)
+    } else {
+      Ok(point.unwrap())
     }
-    Ok(point.unwrap())
   }
 }
 

@@ -13,7 +13,7 @@ use group::{GroupOps, GroupOpsOwned, ScalarMul, ScalarMulOwned, prime::PrimeGrou
 
 use log::debug;
 
-use crate::engines::{Commitment, BasepointProvider, DLEqEngine};
+use crate::{DLEqError, DLEqResult, engines::{Commitment, BasepointProvider, DLEqEngine}};
 
 #[derive(Clone, PartialEq, Debug)]
 #[allow(non_snake_case)]
@@ -29,9 +29,9 @@ pub trait FfGroupConversions {
   fn scalar_to_bytes(scalar: &Self::Scalar) -> [u8; 32];
   fn scalar_to_little_endian_bytes(scalar: &Self::Scalar) -> [u8; 32];
   fn scalar_from_bytes_mod(bytes: [u8; 32]) -> Self::Scalar;
-  fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> anyhow::Result<Self::Scalar>;
+  fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> DLEqResult<Self::Scalar>;
   fn point_to_bytes(point: &Self::Point) -> Vec<u8>;
-  fn bytes_to_point(point: &[u8]) -> anyhow::Result<Self::Point>;
+  fn bytes_to_point(point: &[u8]) -> DLEqResult<Self::Point>;
 }
 
 // Workaround for lack of const generics, which are available as of 1.51 as experimental
@@ -99,7 +99,7 @@ impl<
     B::basepoint() * key
   }
 
-  fn little_endian_bytes_to_private_key(bytes: [u8; 32]) -> anyhow::Result<Self::PrivateKey> {
+  fn little_endian_bytes_to_private_key(bytes: [u8; 32]) -> DLEqResult<Self::PrivateKey> {
     C::little_endian_bytes_to_scalar(bytes)
   }
 
@@ -111,7 +111,7 @@ impl<
     C::point_to_bytes(key)
   }
 
-  fn bytes_to_public_key(key: &[u8]) -> anyhow::Result<Self::PublicKey> {
+  fn bytes_to_public_key(key: &[u8]) -> DLEqResult<Self::PublicKey> {
     C::bytes_to_point(key)
   }
 
@@ -158,15 +158,15 @@ impl<
   }
 
   #[allow(non_snake_case)]
-  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn compute_signature_R(s_value: &Self::PrivateKey, challenge: [u8; 32], key: &Self::PublicKey) -> DLEqResult<Self::PublicKey> {
     Ok((B::alt_basepoint() * s_value) - (*key * C::scalar_from_bytes_mod(challenge)))
   }
 
-  fn commitment_sub_one(commitment: &Self::PublicKey) -> anyhow::Result<Self::PublicKey> {
+  fn commitment_sub_one(commitment: &Self::PublicKey) -> DLEqResult<Self::PublicKey> {
     Ok(*commitment - B::basepoint())
   }
 
-  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> anyhow::Result<Self::PublicKey> {
+  fn reconstruct_key<'a>(commitments: impl Iterator<Item = &'a Self::PublicKey>) -> DLEqResult<Self::PublicKey> {
     let mut power_of_two = F::one();
     let mut res = G::identity();
     for comm in commitments {
@@ -200,7 +200,7 @@ impl<
   }
 
   #[allow(non_snake_case)]
-  fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> anyhow::Result<()> {
+  fn verify_signature(public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> DLEqResult<()> {
     let mut to_hash = C::point_to_bytes(&signature.R);
     to_hash.extend(message);
     let c = C::scalar_from_bytes_mod(Sha256::digest(&to_hash)[..32].try_into().unwrap());
@@ -208,7 +208,7 @@ impl<
     if expected_R == signature.R {
       Ok(())
     } else {
-      anyhow::bail!("Bad signature");
+      Err(DLEqError::InvalidSignature)
     }
   }
 
@@ -228,14 +228,15 @@ impl<
     res
   }
 
-  fn bytes_to_signature(sig: &[u8]) -> anyhow::Result<Self::Signature> {
+  fn bytes_to_signature(sig: &[u8]) -> DLEqResult<Self::Signature> {
     if sig.len() != Self::signature_len() {
-      anyhow::bail!("Invalid signature length");
+      return Err(DLEqError::InvalidSignature);
     }
+
     let point_len = Self::point_len();
     Ok(
       Self::Signature {
-        R: C::bytes_to_point(&sig[..point_len])?,
+        R: C::bytes_to_point(&sig[..point_len]).map_err(|_| DLEqError::InvalidSignature)?,
         s: C::scalar_from_bytes_mod(sig[point_len..].try_into().expect(
           "Signature was correct length yet didn't have a 32-byte scalar")
         )

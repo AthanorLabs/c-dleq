@@ -7,7 +7,7 @@ use p256::{
   Scalar, ProjectivePoint
 };
 
-use crate::engines::{BasepointProvider, ff_group::{FfGroupConversions, FfGroupEngine}};
+use crate::{DLEqError, DLEqResult, engines::{BasepointProvider, ff_group::{FfGroupConversions, FfGroupEngine}}};
 
 pub struct P256Conversions;
 impl FfGroupConversions for P256Conversions {
@@ -28,22 +28,23 @@ impl FfGroupConversions for P256Conversions {
     Scalar::from_bytes_reduced(&scalar.into())
   }
 
-  fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> anyhow::Result<Self::Scalar> {
+  fn little_endian_bytes_to_scalar(bytes: [u8; 32]) -> DLEqResult<Self::Scalar> {
     let mut bytes = bytes;
     bytes.reverse();
-    Scalar::from_repr(bytes.into()).ok_or(anyhow::anyhow!("Invalid scalar"))
+    Scalar::from_repr(bytes.into()).ok_or(DLEqError::InvalidScalar)
   }
 
   fn point_to_bytes(point: &Self::Point) -> Vec<u8> {
      point.to_bytes().as_ref().to_vec()
   }
 
-  fn bytes_to_point(bytes: &[u8]) -> anyhow::Result<Self::Point> {
+  fn bytes_to_point(bytes: &[u8]) -> DLEqResult<Self::Point> {
     let point = ProjectivePoint::from_bytes(GenericArray::from_slice(bytes));
     if point.is_none().into() {
-      anyhow::bail!("Invalid point");
+      Err(DLEqError::InvalidPoint)
+    } else {
+      Ok(point.unwrap())
     }
-    Ok(point.unwrap())
   }
 }
 

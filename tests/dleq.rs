@@ -155,6 +155,7 @@ fn k256_secp256kfun_interchangability() {
   let (proof, skey_a, skey_b) = DLEqProof::<k256::Secp256k1Engine, secp256kfun::Secp256k1Engine>::new(&mut thread_rng());
   // The special part here is that they're flipped, which means the elements from one are now acting as the elements from the other
   // The reason we're offering both libraries is to offer developers easier integration, so it's important they both work as secp256k1
+  // It should be noted secp256kfun will not work with 0 keys while k256 will
   let proof = DLEqProof::<secp256kfun::Secp256k1Engine, k256::Secp256k1Engine>::deserialize(&proof.serialize().unwrap()).unwrap();
   let (pkey_a, pkey_b) = proof.verify().expect("DL Eq proof verification failed");
   assert_eq!(

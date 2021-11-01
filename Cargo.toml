@@ -28,6 +28,8 @@ jubjub = { version = "0.7", optional = true }
 
 secp256kfun = { version = "0.6", features = ["std"], default-features = false, optional = true }
 
+thiserror = "1.0.30"
+
 # Only used in log statements
 hex = "0.4"
 log = "0.4.8"
