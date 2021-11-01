@@ -133,10 +133,17 @@ impl DLEqEngine for Ed25519Engine {
       res += comm * power_of_two;
       power_of_two *= two;
     }
+    // If we didn't have custom deserializer support in which someone will possibly call dalek's
+    // from bytes and use that instead of our from bytes, this could feasibly be a panic.
+    // That would make secp256kfun the only other library which can error here and pave the way to
+    // removing the Result from the return type. That said, it's best to just error here for now
+    // That's an easy enough slip which could break the proof if they don't also provide this check
+    // Combined with the lack of a resolution over secp256kfun...
     if !res.is_torsion_free() {
-      panic!("A key with torsion entered the system despite ensuring scalars don't have high bits sent and points don't have torsion");
+      Err(DLEqError::InvalidPoint)
+    } else {
+      Ok(res)
     }
-    Ok(res)
   }
 
   fn blinding_key_to_public(key: &Self::PrivateKey) -> Self::PublicKey {
