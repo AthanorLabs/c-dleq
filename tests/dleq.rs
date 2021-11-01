@@ -51,98 +51,84 @@ fn test_with<EngineA: DLEqEngine, EngineB: DLEqEngine>() {
 #[cfg(feature = "dalek-dleq")]
 #[test]
 fn ed25519_with_self() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Engine, Ed25519Engine>();
 }
 
 #[cfg(feature = "dalek-dleq")]
 #[test]
 fn ed25519_with_ristretto() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Engine, RistrettoEngine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "k256-dleq"))]
 #[test]
 fn ed25519_with_k256() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Engine, k256::Secp256k1Engine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "p256-dleq"))]
 #[test]
 fn ed25519_with_p256() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Engine, P256Engine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn ed25519_with_jubjub() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Engine, JubjubEngine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "secp256kfun-dleq"))]
 #[test]
 fn ed25519_with_secp256kfun() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<Ed25519Engine, secp256kfun::Secp256k1Engine>();
 }
 
 #[cfg(feature = "dalek-dleq")]
 #[test]
 fn ristretto_with_self() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, RistrettoEngine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "k256-dleq"))]
 #[test]
 fn ristretto_with_k256() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, k256::Secp256k1Engine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "p256-dleq"))]
 #[test]
 fn ristretto_with_p256() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, P256Engine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn ristretto_with_jubjub() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, JubjubEngine>();
 }
 
 #[cfg(all(feature = "dalek-dleq", feature = "secp256kfun-dleq"))]
 #[test]
 fn ristretto_with_secp256kfun() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<RistrettoEngine, secp256kfun::Secp256k1Engine>();
 }
 
 #[cfg(feature = "k256-dleq")]
 #[test]
 fn k256_with_self() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<k256::Secp256k1Engine, k256::Secp256k1Engine>();
 }
 
 #[cfg(all(feature = "k256-dleq", feature = "p256-dleq"))]
 #[test]
 fn k256_with_p256() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<k256::Secp256k1Engine, P256Engine>();
 }
 
 #[cfg(all(feature = "k256-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn k256_with_jubub() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<k256::Secp256k1Engine, JubjubEngine>();
 }
 
@@ -171,41 +157,35 @@ fn k256_secp256kfun_interchangability() {
 #[cfg(feature = "p256-dleq")]
 #[test]
 fn p256_with_self() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<P256Engine, P256Engine>();
 }
 
 #[cfg(all(feature = "p256-dleq", feature = "jubjub-dleq"))]
 #[test]
 fn p256_with_jubub() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<P256Engine, JubjubEngine>();
 }
 
 #[cfg(all(feature = "p256-dleq", feature = "secp256kfun-dleq"))]
 #[test]
 fn p256_with_secp256kfun() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<P256Engine, secp256kfun::Secp256k1Engine>();
 }
 
 #[cfg(feature = "jubjub-dleq")]
 #[test]
 fn jubub_with_self() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<JubjubEngine, JubjubEngine>();
 }
 
 #[cfg(all(feature = "jubjub-dleq", feature = "secp256kfun-dleq"))]
 #[test]
 fn jubjub_with_secp256kfun() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<JubjubEngine, secp256kfun::Secp256k1Engine>();
 }
 
 #[cfg(feature = "secp256kfun-dleq")]
 #[test]
 fn secp256kfun_with_self() {
-  let _ = env_logger::builder().is_test(true).try_init();
   test_with::<secp256kfun::Secp256k1Engine, secp256kfun::Secp256k1Engine>();
 }
