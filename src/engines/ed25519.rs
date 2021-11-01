@@ -24,8 +24,8 @@ lazy_static! {
   };
 }
 
-#[derive(Clone, PartialEq)]
 #[allow(non_snake_case)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Signature {
   R: EdwardsPoint,
   s: Scalar

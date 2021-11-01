@@ -31,7 +31,7 @@ fn random_scalar<R: RngCore + CryptoRng>(r: &mut R) -> Scalar {
 }
 
 #[allow(non_snake_case)]
-#[derive(Clone, PartialEq)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Signature {
   R: Point,
   s: Scalar::<Public, Zero>

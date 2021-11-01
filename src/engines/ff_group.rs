@@ -15,8 +15,8 @@ use log::debug;
 
 use crate::{DLEqError, DLEqResult, engines::{Commitment, BasepointProvider, DLEqEngine}};
 
-#[derive(Clone, PartialEq, Debug)]
 #[allow(non_snake_case)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Signature<F, G> {
   R: G,
   s: F

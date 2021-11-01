@@ -30,6 +30,8 @@ pub enum DLEqError {
 
 pub type DLEqResult<T> = Result<T, DLEqError>;
 
+// Debug would be such a dump of data this likely isn't helpful, but at least it is acceptable to anyone who wants it
+#[derive(Clone, Debug)]
 pub struct DLEqProof<EngineA: DLEqEngine, EngineB: DLEqEngine> {
   base_commitments: Vec<(EngineA::PublicKey, EngineB::PublicKey)>,
   first_challenges: Vec<[u8; 32]>,

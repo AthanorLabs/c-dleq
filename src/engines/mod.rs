@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use rand_core::{RngCore, CryptoRng};
 
 #[cfg(feature = "dalek-dleq")]
@@ -18,14 +20,7 @@ pub mod secp256kfun;
 
 use crate::DLEqResult;
 
-#[allow(non_snake_case)]
-pub struct KeyBundle {
-  pub dl_eq: Vec<u8>,
-  pub B: Vec<u8>,
-  pub BR: Vec<u8>,
-  pub scripted_destination: Vec<u8>
-}
-
+#[derive(Clone, Debug)]
 pub struct Commitment<Engine: DLEqEngine> {
   pub blinding_key: Engine::PrivateKey,
   pub commitment: Engine::PublicKey,
@@ -39,9 +34,9 @@ pub trait BasepointProvider {
 }
 
 pub trait DLEqEngine: Sized {
-  type PrivateKey: PartialEq + Clone + Sized + Send + Sync + 'static;
-  type PublicKey: PartialEq + Clone + Sized + Send + Sync + 'static;
-  type Signature: PartialEq + Clone + Sized + Send + Sync + 'static;
+  type PrivateKey: PartialEq + Clone + Debug + Sized + Send + Sync + 'static;
+  type PublicKey: PartialEq + Clone + Debug + Sized + Send + Sync + 'static;
+  type Signature: PartialEq + Clone + Debug + Sized + Send + Sync + 'static;
 
   // API is only used by the tests in this repo at the time BUT it does allow apps which need an
   // alt basepoint to hook into this lib for them, or simply just note which alt basepoint was used
