@@ -46,7 +46,10 @@ impl DLEqEngine for Ed25519Engine {
   }
 
   fn new_private_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::PrivateKey {
-    Scalar::random(rng)
+    // Doesn't use Scalar::random due to rand_core version conflicts
+    let mut bytes = [0u8; 64];
+    rng.fill_bytes(&mut bytes);
+    Scalar::from_bytes_mod_order_wide(&bytes)
   }
 
   fn to_public_key(key: &Self::PrivateKey) -> Self::PublicKey {
@@ -83,7 +86,7 @@ impl DLEqEngine for Ed25519Engine {
       let blinding_key = if i == (bits - 1) {
         -blinding_key_total * power_of_two.invert()
       } else {
-        Scalar::random(rng)
+        Self::new_private_key(rng)
       };
       blinding_key_total += blinding_key * power_of_two;
       power_of_two *= two;

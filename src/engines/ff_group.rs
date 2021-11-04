@@ -85,18 +85,7 @@ impl<
   }
 
   fn new_private_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::PrivateKey {
-    // Not all libraries routed through here have wide scalar reduction
-    // This should also not produce a biased output despite being suboptimal
-    // Doesn't use Scalar::random (which is either this or wide reduction) due to version conflicts
-    loop {
-      let mut bytes = [0; 32];
-      rng.fill_bytes(&mut bytes);
-      let scalar = C::scalar_from_bytes_mod(bytes);
-      // Removes the need for a canonical decode, AKA an extra method requirement for the defined API
-      if C::scalar_to_bytes(&scalar) == bytes {
-        return scalar;
-      }
-    }
+     F::random(rng)
   }
 
   fn to_public_key(key: &Self::PrivateKey) -> Self::PublicKey {

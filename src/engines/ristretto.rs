@@ -45,7 +45,10 @@ impl DLEqEngine for RistrettoEngine {
   }
 
   fn new_private_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::PrivateKey {
-    Scalar::random(rng)
+    // Doesn't use Scalar::random due to rand_core version conflicts
+    let mut bytes = [0u8; 64];
+    rng.fill_bytes(&mut bytes);
+    Scalar::from_bytes_mod_order_wide(&bytes)
   }
 
   fn to_public_key(key: &Self::PrivateKey) -> Self::PublicKey {
