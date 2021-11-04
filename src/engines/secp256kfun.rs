@@ -86,7 +86,7 @@ impl DLEqEngine for Secp256k1Engine {
         s!(-blinding_key_total * inv_power_of_two).mark::<NonZero>()
           .expect("Blinding key total before final is zero")
       } else {
-        random_scalar(rng)
+        Self::new_private_key(rng)
       };
       blinding_key_total = s!(blinding_key_total + blinding_key * power_of_two);
       power_of_two = s!(power_of_two * two).mark::<NonZero>().expect("Power of two is zero");
