@@ -187,7 +187,7 @@ impl<
 
     let mut to_hash = C::point_to_bytes(&R);
     to_hash.extend(message);
-    let s = k - (*key * C::scalar_from_bytes_mod(Sha256::digest(&to_hash)[..32].try_into().unwrap()));
+    let s = k + (*key * C::scalar_from_bytes_mod(Sha256::digest(&to_hash)[..32].try_into().unwrap()));
 
     Signature { R, s }
   }
@@ -197,7 +197,7 @@ impl<
     let mut to_hash = C::point_to_bytes(&signature.R);
     to_hash.extend(message);
     let c = C::scalar_from_bytes_mod(Sha256::digest(&to_hash)[..32].try_into().unwrap());
-    let expected_R = (B::basepoint() * signature.s) + (*public_key * c);
+    let expected_R = (B::basepoint() * signature.s) + ((G::identity() - *public_key) * c);
     if expected_R == signature.R {
       Ok(())
     } else {

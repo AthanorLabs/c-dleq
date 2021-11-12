@@ -175,7 +175,7 @@ impl DLEqEngine for Secp256k1Engine {
     let mut to_hash = R.to_bytes().to_vec();
     to_hash.extend(message);
     let c = Scalar::from_bytes_mod_order(Sha256::digest(&to_hash)[..32].try_into().unwrap());
-    let s = s!(k - (key * c)).mark::<Public>();
+    let s = s!(k + (key * c)).mark::<Public>();
 
     Signature { R, s }
   }
@@ -185,7 +185,7 @@ impl DLEqEngine for Secp256k1Engine {
     to_hash.extend(message);
     let c = Scalar::from_bytes_mod_order(Sha256::digest(&to_hash)[..32].try_into().unwrap()).mark::<Public>();
     #[allow(non_snake_case)]
-    let expected_R = g!((signature.s * G) + (c * public_key))
+    let expected_R = g!((signature.s * G) - (c * public_key))
       .mark::<NonZero>()
       .ok_or(DLEqError::InvalidPoint)?;
     if expected_R == signature.R {
