@@ -6,6 +6,9 @@ license = "MIT"
 authors = ["Luke Parker <lukeparker5132@gmail.com>"]
 edition = "2018"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 lazy_static = "1"
 hex-literal = "0.3"
@@ -14,7 +17,6 @@ digest = "0.9"
 sha2 = "0.9"
 blake2 = "0.9"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
-
 rand_core = "0.6"
 
 curve25519-dalek = { version = "3.2", optional = true }
@@ -39,7 +41,7 @@ rand = "0.8"
 env_logger = "0.9"
 
 [features]
-default = ["dalek-dleq", "k256-dleq", "serialize"]
+default = ["dalek-dleq", "k256-dleq", "serialize", "secp256kfun-dleq", "serialize"]
 # dleq appended due to later conflicts with dependency names
 # Until namespaced features are available outside of nightly...
 dalek-dleq = ["curve25519-dalek"]
