@@ -14,7 +14,7 @@ use crate::engines::{ed25519::Ed25519Engine, secp256kfun::Secp256k1Engine};
 
 #[no_mangle]
 pub extern "C" fn ed25519_secp256k1_proof_size() -> usize {
-    proof_size::<Ed25519Engine, Secp256k1Engine>()
+  proof_size::<Ed25519Engine, Secp256k1Engine>()
 }
 
 #[no_mangle]
