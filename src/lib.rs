@@ -13,6 +13,11 @@ use crate::engines::DLEqEngine;
 use crate::engines::{ed25519::Ed25519Engine, secp256kfun::Secp256k1Engine};
 
 #[no_mangle]
+pub extern "C" fn ed25519_secp256k1_proof_size() -> usize {
+    proof_size::<Ed25519Engine, Secp256k1Engine>()
+}
+
+#[no_mangle]
 // prove writes a 32-byte private key and a DLEq proof between ed25519 and secp256k1 into dst.
 // if the function errors, it returns false.
 pub extern "C" fn ed25519_secp256k1_prove(dst: *mut u8) -> bool {
