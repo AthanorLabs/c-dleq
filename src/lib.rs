@@ -14,7 +14,7 @@ use crate::engines::{ed25519::Ed25519Engine, secp256kfun::Secp256k1Engine};
 
 #[no_mangle]
 pub extern "C" fn ed25519_secp256k1_proof_size() -> usize {
-  proof_size::<Ed25519Engine, Secp256k1Engine>()
+    proof_size::<Ed25519Engine, Secp256k1Engine>()
 }
 
 #[no_mangle]
@@ -49,10 +49,20 @@ pub extern "C" fn ed25519_secp256k1_verify(src: *mut u8, dst: *mut u8) -> bool {
     let proof_len = proof_size::<Ed25519Engine, Secp256k1Engine>();
     unsafe {
         let proof_bytes = std::slice::from_raw_parts::<u8>(src, proof_len);
-        let proof = DLEqProof::<Ed25519Engine, Secp256k1Engine>::deserialize(&proof_bytes)
-            .map_err(|_| false)
-            .unwrap();
-        let (pub_a, pub_b) = proof.verify().map_err(|_| false).unwrap();
+        let res = DLEqProof::<Ed25519Engine, Secp256k1Engine>::deserialize(&proof_bytes);
+        let proof = match res {
+            Ok(proof) => proof,
+            Err(_) => {
+                return false;
+            }
+        };
+
+        let (pub_a, pub_b) = match proof.verify() {
+            Ok(pks) => pks,
+            Err(_) => {
+                return false;
+            }
+        };
 
         let ed25519_point_len = Ed25519Engine::point_len();
 
