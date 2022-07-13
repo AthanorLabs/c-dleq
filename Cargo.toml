@@ -1,7 +1,7 @@
 [package]
 name = "dleq"
 version = "0.0.0"
-description = "Implementation of a Discrete Log Equality proof supporting a variety of curves"
+description = "C bindings around dleq"
 license = "MIT"
 authors = ["Luke Parker <lukeparker5132@gmail.com>"]
 edition = "2018"
@@ -10,44 +10,18 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-lazy_static = "1"
 hex-literal = "0.3"
-
-digest = "0.9"
-sha2 = "0.9"
-blake2 = "0.9"
-tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+lazy_static = "1"
 rand_core = "0.6"
 
-curve25519-dalek = { version = "3.2", optional = true }
+digest = "0.10"
+blake2 = "0.10"
 
-ff    = { version = "0.10", optional = true }
-group = { version = "0.10", optional = true }
+transcript = { package = "flexible-transcript", version = "0.1.3", features = ["recommended"] }
 
-k256   = { version = "0.9", optional = true }
-p256   = { version = "0.9", optional = true }
-jubjub = { version = "0.7", optional = true }
+group = "0.12"
 
-secp256kfun = { version = "0.6", features = ["std"], default-features = false, optional = true }
+k256           = { version = "0.11", features = ["arithmetic", "bits"] }
+dalek-ff-group = "0.1.2"
 
-thiserror = "1.0.30"
-
-# Only used in log statements
-hex = "0.4"
-log = "0.4.8"
-
-[dev-dependencies]
-rand = "0.8"
-env_logger = "0.9"
-
-[features]
-default = ["dalek-dleq", "k256-dleq", "serialize", "secp256kfun-dleq", "serialize"]
-# dleq appended due to later conflicts with dependency names
-# Until namespaced features are available outside of nightly...
-dalek-dleq = ["curve25519-dalek"]
-ffgroup = ["ff", "group"]
-k256-dleq = ["ffgroup", "k256"]
-p256-dleq = ["ffgroup", "p256"]
-jubjub-dleq = ["ffgroup", "jubjub"]
-secp256kfun-dleq = ["secp256kfun"]
-serialize = []
+dleq = { package = "dleq-serai", version = "0.1.0", features = ["serialize", "experimental"] }
