@@ -49,7 +49,7 @@ pub extern "C" fn ed25519_secp256k1_proof_size() -> usize {
 #[no_mangle]
 // prove writes a 32-byte private key and a DLEq proof between ed25519 and secp256k1 into dst.
 // if the function errors, it returns false.
-pub extern "C" fn ed25519_secp256k1_prove(dst: *mut u8) -> bool {
+pub extern "C" fn ed25519_secp256k1_prove(proof_dst: *mut u8, key_dst: *mut u8) -> bool {
     let generators = *GENERATORS;
 
     let mut seed = [0; 32];
@@ -67,9 +67,8 @@ pub extern "C" fn ed25519_secp256k1_prove(dst: *mut u8) -> bool {
     proof.serialize(&mut proof_buf).unwrap();
     assert_eq!(proof_buf.len(), PROOF_SIZE);
     unsafe {
-        std::slice::from_raw_parts_mut::<u8>(dst, 32).copy_from_slice(&key_buf);
-        std::slice::from_raw_parts_mut::<u8>(dst.offset(32), PROOF_SIZE)
-            .copy_from_slice(&proof_buf);
+        std::slice::from_raw_parts_mut::<u8>(key_dst, 32).copy_from_slice(&key_buf);
+        std::slice::from_raw_parts_mut::<u8>(proof_dst, PROOF_SIZE).copy_from_slice(&proof_buf);
     }
 
     true
@@ -82,7 +81,7 @@ pub extern "C" fn ed25519_secp256k1_prove(dst: *mut u8) -> bool {
 pub extern "C" fn ed25519_secp256k1_verify(src: *mut u8, dst: *mut u8) -> bool {
     let proof = (unsafe {
         CompromiseLinearDLEq::<EdwardsPoint, ProjectivePoint>::deserialize(&mut Cursor::new(
-            std::slice::from_raw_parts::<u8>(src.offset(32), ed25519_secp256k1_proof_size()),
+            std::slice::from_raw_parts::<u8>(src, ed25519_secp256k1_proof_size()),
         ))
     })
     .map(|proof| proof.verify(&mut OsRng, &mut transcript(), *GENERATORS));
@@ -107,8 +106,9 @@ mod tests {
 
     #[test]
     fn test_prove_and_verify() {
-        let mut proof = vec![0u8; 32 + ed25519_secp256k1_proof_size()];
-        let ok = ed25519_secp256k1_prove(proof.as_mut_ptr());
+        let mut proof = vec![0u8; ed25519_secp256k1_proof_size()];
+        let mut key = vec![0u8; 32];
+        let ok = ed25519_secp256k1_prove(proof.as_mut_ptr(), key.as_mut_ptr());
         assert!(ok);
         let mut public_keys = vec![0u8; 64];
         let ok = ed25519_secp256k1_verify(proof.as_mut_ptr(), public_keys.as_mut_ptr());
