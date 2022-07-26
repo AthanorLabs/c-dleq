@@ -91,7 +91,7 @@ pub extern "C" fn ed25519_secp256k1_verify(src: *mut u8, dst: *mut u8) -> bool {
             std::slice::from_raw_parts_mut::<u8>(dst, 32)
                 .write(ed.to_bytes().as_ref())
                 .unwrap();
-            std::slice::from_raw_parts_mut::<u8>(dst.offset(32), 32)
+            std::slice::from_raw_parts_mut::<u8>(dst.offset(32), 33)
                 .write(secp.to_bytes().as_ref())
                 .unwrap();
         }
